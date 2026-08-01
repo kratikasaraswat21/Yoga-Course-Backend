@@ -1,5 +1,6 @@
 import routers from "#src/routes/routes.js";
 import cors from "cors";
+import "dotenv";
 import express from "express";
 import helmet from "helmet";
 const app = express();
@@ -15,7 +16,6 @@ app.get("/health", (req, res) => {
     message: "Yoga course API is running",
   });
 });
-
 app.use("/app/api/v1", routers);
 
 export default app;
