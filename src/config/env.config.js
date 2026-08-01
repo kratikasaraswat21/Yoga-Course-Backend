@@ -6,4 +6,6 @@ export const EnvConfig = {
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
   HASH_PASSWORD_SALT: parseInt(process.env.HASH_PASSWORD_SALT),
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
+  JWT_SECRET: process.env.JWT_SECRET,
 };

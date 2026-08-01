@@ -1,4 +1,4 @@
-import { AuthLoginController } from "#src/routes/modules/auth/auth.controller.js";
+import { AuthLoginController, AuthSignUpController } from "#src/routes/modules/auth/auth.controller.js";
 import { Router } from "express";
 import { body } from "express-validator";
 

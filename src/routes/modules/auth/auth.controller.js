@@ -1,5 +1,9 @@
 import { EnvConfig } from "#src/config/env.config.js";
-import { GetUserByEmailService } from "#src/routes/modules/auth/auth.service.js";
+import { CreateUserService, GetUserByEmailService } from "#src/routes/modules/auth/auth.service.js";
+import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
+import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 // ? This is the controller for the signup route
 export const AuthSignUpController = async (req, res) => {
@@ -13,11 +17,17 @@ export const AuthSignUpController = async (req, res) => {
     return res.status(400).json({ message: ERROR_MESSAGES.USER_ALREADY_EXISTS });
   }
 
-  const passwordHash = await bcrypt.hash(password, EnvConfig.BCRYPT_SALT_ROUNDS);
+  const passwordHash = bcrypt.hashSync(password, EnvConfig.HASH_PASSWORD_SALT);
 
-  await CreateUserService({ name, email, passwordHash });
+  const user = await CreateUserService({ name, email, passwordHash });
 
-  return res.status(201).json({ message: SUCCESS_MESSAGES.USER_REGISTERED_SUCCESSFULLY });
+  const jwt_token = jwt.sign({ id: user.id, email: user.email }, EnvConfig.JWT_SECRET, {
+    expiresIn: EnvConfig.JWT_EXPIRES_IN,
+  });
+
+  return res
+    .status(201)
+    .json({ message: SUCCESS_MESSAGES.USER_REGISTERED_SUCCESSFULLY, Success: true, token: jwt_token });
 };
 
 // ? This is the Controller for the login route
@@ -34,8 +44,14 @@ export const AuthLoginController = async (req, res) => {
   const comparePassword = await bcrypt.compare(password, findUser.password);
 
   if (!comparePassword) {
-    return res.status(400).json({ message: INVALID_CREDENTIALS });
+    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_CREDENTIALS });
   }
 
-  return res.status(200).json({ message: SUCCESS_MESSAGES.USER_LOGGED_IN_SUCCESSFULLY });
+  const jwt_token = jwt.sign({ id: findUser.id, email: findUser.email }, EnvConfig.JWT_SECRET, {
+    expiresIn: EnvConfig.JWT_EXPIRES_IN,
+  });
+
+  return res
+    .status(200)
+    .json({ message: SUCCESS_MESSAGES.USER_LOGGED_IN_SUCCESSFULLY, Success: true, token: jwt_token });
 };
