@@ -179,17 +179,17 @@ export const AuthForgotPasswordController = asyncHandler(async (req, res) => {
   const email = req.body.email.trim().toLowerCase();
 
   const user = await GetUserByEmailService(email);
-
-  // Use the same response whether or not the email exists to avoid account enumeration.
-  if (user) {
-    const { rawToken } = await CreatePasswordResetTokenService(user.id);
-    const resetUrl = `${EnvConfig.PASSWORD_RESET_URL}?token=${encodeURIComponent(rawToken)}`;
-
-    SendEmailNotificationService(user.email, "EMAIL_PASSWORD_RESET", {
-      name: user.name,
-      resetUrl,
-    });
+  if (!user) {
+    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
+
+  const { rawToken } = await CreatePasswordResetTokenService(user.id);
+  const resetUrl = `${EnvConfig.PASSWORD_RESET_URL}?token=${encodeURIComponent(rawToken)}`;
+
+  SendEmailNotificationService(user.email, "EMAIL_PASSWORD_RESET", {
+    name: user.name,
+    resetUrl,
+  });
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.PASSWORD_RESET_REQUEST_ACCEPTED,
@@ -215,6 +215,7 @@ export const AuthResetPasswordController = asyncHandler(async (req, res) => {
   }
 
   const resetToken = await GetPasswordResetTokenService(token);
+
   if (!resetToken || resetToken.expiresAt <= new Date()) {
     return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
   }

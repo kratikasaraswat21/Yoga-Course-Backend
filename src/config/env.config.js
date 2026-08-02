@@ -16,4 +16,7 @@ export const EnvConfig = {
   EMAIL_SMTP_PORT: process.env.EMAIL_SMTP_PORT,
   EMAIL_SMTP_USER: process.env.EMAIL_SMTP_USER,
   EMAIL_SMTP_PASS: process.env.EMAIL_SMTP_PASS,
+
+  PLATFORM_OWNER_MAIL: process.env.PLATFORM_OWNER_MAIL,
+  PLATFORM_OWNER_NAME: process.env.PLATFORM_OWNER_NAME,
 };

@@ -21,8 +21,12 @@ export const GetEmailTemplate = async (templateName, data) => {
   switch (templateName) {
     case "EMAIL_OTP_VERIFICATION":
       return await EmailOtpVerificationTemplate(data);
+
     case "EMAIL_PASSWORD_RESET":
       return await EmailPasswordResetTemplate(data);
+
+    case "ADMIN_EMAIL_OTP_VERIFICATION":
+      return await AdminLoginOtpVerificationTemplate(data);
   }
 };
 
@@ -39,6 +43,18 @@ const EmailPasswordResetTemplate = async (data) => {
   const { name, resetUrl } = data;
   const subject = "Reset your Yoga Course password";
   const html = await RenderEmailTemplate("password_reset.html", { USER_NAME: name, RESET_URL: resetUrl });
+
+  return { subject, html };
+};
+
+const AdminLoginOtpVerificationTemplate = async (data) => {
+  const { name, otp } = data;
+  const subject = "Here Is You Otp For Admin Login";
+
+  const html = await RenderEmailTemplate("admin_otp_email_verification.html", {
+    ADMIN_LOGIN_OTP: otp,
+    ADMIN_NAME: name,
+  });
 
   return { subject, html };
 };

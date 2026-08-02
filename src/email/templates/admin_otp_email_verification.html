@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Admin Login Verification</title>
+  </head>
+
+  <body
+    style="margin: 0; padding: 0; background-color: #f4f4f7; color: #333333; font-family: Arial, Helvetica, sans-serif">
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      role="presentation"
+      style="padding: 40px 15px; background-color: #f4f4f7">
+      <tr>
+        <td align="center">
+          <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            role="presentation"
+            style="
+              max-width: 560px;
+              overflow: hidden;
+              background-color: #ffffff;
+              border-radius: 12px;
+              box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            ">
+            <!-- Header -->
+            <tr>
+              <td align="center" style="padding: 30px 20px; background-color: #6c5ce7; color: #ffffff">
+                <h1 style="margin: 0; font-size: 26px; line-height: 1.3">Admin Login Verification</h1>
+              </td>
+            </tr>
+
+            <!-- Content -->
+            <tr>
+              <td style="padding: 35px 30px">
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6">
+                  Hello <strong>{{ADMIN_NAME}}</strong>,
+                </p>
+
+                <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6">
+                  We received an attempt to access the Yoga Course Platform admin panel. Use the following One-Time
+                  Password (OTP) to complete the login:
+                </p>
+
+                <!-- OTP -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                  <tr>
+                    <td align="center">
+                      <div
+                        style="
+                          display: inline-block;
+                          padding: 16px 30px;
+                          background-color: #f1efff;
+                          border: 1px dashed #6c5ce7;
+                          border-radius: 8px;
+                          color: #6c5ce7;
+                          font-size: 32px;
+                          font-weight: bold;
+                          letter-spacing: 8px;
+                        ">
+                        {{ADMIN_LOGIN_OTP}}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 25px 0 10px; font-size: 15px; line-height: 1.6; text-align: center">
+                  This OTP is valid for <strong>5 minutes</strong>.
+                </p>
+
+                <p
+                  style="
+                    margin: 0;
+                    color: #d63031;
+                    font-size: 14px;
+                    font-weight: bold;
+                    line-height: 1.6;
+                    text-align: center;
+                  ">
+                  Do not share this OTP with anyone else.
+                </p>
+
+                <!-- Security warning -->
+                <table
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  role="presentation"
+                  style="margin-top: 30px">
+                  <tr>
+                    <td
+                      style="
+                        padding: 16px;
+                        background-color: #fff4f4;
+                        border-left: 4px solid #d63031;
+                        color: #555555;
+                        font-size: 14px;
+                        line-height: 1.6;
+                      ">
+                      <strong style="color: #d63031"> Wasn’t this you? </strong>
+
+                      <br />
+
+                      If you did not attempt to access the admin panel, do not use or share this OTP. Please secure your
+                      admin account immediately.
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 25px 0 0; color: #777777; font-size: 14px; line-height: 1.6">
+                  This is an automated security email. Please do not reply to this message.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                align="center"
+                style="padding: 20px; background-color: #fafafa; color: #999999; font-size: 13px; line-height: 1.5">
+                © 2026 Yoga Course Platform. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
