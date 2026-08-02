@@ -80,10 +80,12 @@ model User {
   emailVerifiedAt DateTime?
   lastLoginAt     DateTime?
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
-  authSessions AuthSession[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
+  authSessions            AuthSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 
   @@index([role])
   @@index([status])
@@ -111,4 +113,42 @@ model AuthSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("auth_sessions")
+}
+
+model EmailVerificationToken {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  otpHash String
+
+  attemptsCount Int @default(0)
+  maxAttempts   Int @default(5)
+
+  expiresAt   DateTime
+  validatedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("email_verification_otps")
+}
+
+model PasswordResetToken {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  purpose TokenPurpose @default(USER_PASSWORD_RESET)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

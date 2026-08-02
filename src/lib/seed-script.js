@@ -15,7 +15,12 @@ export async function AdminSeedFunction() {
 
   await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
-    update: { role: UserRole.ADMIN, status: UserStatus.ACTIVE },
+    update: {
+      password: passwordHash,
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      emailVerifiedAt: new Date(),
+    },
     create: {
       name: "Admin",
       email: ADMIN_EMAIL,

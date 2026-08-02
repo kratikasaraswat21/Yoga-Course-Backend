@@ -1,4 +1,5 @@
 import routers from "#src/routes/routes.js";
+import { errorHandler } from "#src/utils/async-handler.util.js";
 import cors from "cors";
 import "dotenv";
 import express from "express";
@@ -17,5 +18,6 @@ app.get("/health", (req, res) => {
   });
 });
 app.use("/app/api/v1", routers);
+app.use(errorHandler);
 
 export default app;
