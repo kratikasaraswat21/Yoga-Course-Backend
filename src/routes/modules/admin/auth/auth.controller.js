@@ -50,13 +50,12 @@ export const VerifyAdminLoginCredentialController = asyncHandler(async (req, res
     name: EnvConfig.PLATFORM_OWNER_NAME,
   });
 
-
   return res.status(200).json({
     message: SUCCESS_MESSAGES.OTP_SENT_SUCCESSFULLY,
-    Success: true,
+    success: true,
     data: {
       requires_email_verification: true,
-      otp_id: otp_service_data.otp_id,
+      signature: otp_service_data.otp_id,
     },
   });
 });
@@ -78,6 +77,13 @@ export const VerifyAdminLoginStatusController = asyncHandler(async (req, res) =>
   }
 
   const data = await GetAdminInfoById(user_id);
+
+  if (!data) {
+    return res.status(400).json({
+      message: ERROR_MESSAGES.USER_NOT_FOUND,
+      success: false,
+    });
+  }
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.USER_VERIFIED_SUCCESSFULLY,
@@ -200,7 +206,7 @@ export const AdminAuthVerifyOtpController = asyncHandler(async (req, res) => {
 //
 
 export const ResendAdminLoginOtpVerificationOtp = asyncHandler(async (req, res) => {
-  const prev_otp_id = req.query.id;
+  const prev_otp_id = req.query.signature;
 
   const admin_info = await GetAdminInfoWithRole();
 
@@ -210,6 +216,13 @@ export const ResendAdminLoginOtpVerificationOtp = asyncHandler(async (req, res) 
 
   const otp_service_data = await ReCreateAdminEmailVerificationOTP(admin_info.id, prev_otp_id);
 
+  if (!otp_service_data) {
+    return res.status(400).json({
+      message: ERROR_MESSAGES.INVALID_OR_BROKEN_OTP_SIGNATURE,
+      success: false,
+    });
+  }
+
   SendEmailNotificationService(EnvConfig.PLATFORM_OWNER_MAIL, "ADMIN_EMAIL_OTP_VERIFICATION", {
     otp: otp_service_data.otp,
     name: EnvConfig.PLATFORM_OWNER_NAME,
@@ -217,6 +230,6 @@ export const ResendAdminLoginOtpVerificationOtp = asyncHandler(async (req, res) 
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.OTP_SENT_SUCCESSFULLY,
-    Success: true,
+    success: true,
   });
 });

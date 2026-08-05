@@ -146,7 +146,7 @@ export const CreateAdminEmailVerificationTokenService = async (userId) => {
   return {
     otp,
     expiresAt,
-    otpId: newOtp.id,
+    otp_id: newOtp.id,
   };
 };
 
@@ -154,15 +154,26 @@ export const CreateAdminEmailVerificationTokenService = async (userId) => {
 //? SERVICE 8: Regenerate Admin Email-Verification OTP
 //
 export const ReCreateAdminEmailVerificationOTP = async (userId, previousOtpId) => {
+  if (
+    typeof previousOtpId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previousOtpId.trim())
+  ) {
+    return null;
+  }
+
+  previousOtpId = previousOtpId.trim();
+
   const otp = randomInt(100000, 1000000).toString();
 
   const otpHash = await bcrypt.hash(otp, EnvConfig.HASH_PASSWORD_SALT);
 
   const expiresAt = new Date(Date.now() + EnvConfig.OTP_EXPIRES_MINUTES * 60 * 1000);
 
-  await prisma.emailVerificationToken.update({
+  const updatedTokens = await prisma.emailVerificationToken.updateMany({
     where: {
       id: previousOtpId,
+      userId,
+      validatedAt: null,
     },
     data: {
       userId,
@@ -170,6 +181,10 @@ export const ReCreateAdminEmailVerificationOTP = async (userId, previousOtpId) =
       expiresAt,
     },
   });
+
+  if (updatedTokens.count === 0) {
+    return null;
+  }
 
   return {
     otp,

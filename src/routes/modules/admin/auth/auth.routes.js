@@ -59,9 +59,9 @@ adminAuthRoutes.post(
 );
 
 //
-//? ROUTE 5 ==> This is the route for Verifying the Admin With the otp
+//? ROUTE 6 ==> This is the route for Verifying the Admin With the otp
 //
 
-adminAuthRoutes.post("/resend-otp", query("id"), ResendAdminLoginOtpVerificationOtp);
+adminAuthRoutes.post("/resend-otp", query("signature"), ResendAdminLoginOtpVerificationOtp);
 
 export default adminAuthRoutes;

@@ -83,7 +83,7 @@ export const AuthLoginController = asyncHandler(async (req, res) => {
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.USER_LOGGED_IN_SUCCESSFULLY,
-    Success: true,
+    success: true,
     data: {
       auth_token: jwt_token,
     },
