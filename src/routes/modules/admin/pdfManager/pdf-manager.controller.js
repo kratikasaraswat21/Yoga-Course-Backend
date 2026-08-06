@@ -58,12 +58,16 @@ export const generatePdfThumbnailUploadSignature = asyncHandler(async (req, res)
 });
 
 export const handelAddPdfCourseController = asyncHandler(async (req, res) => {
-  const title = req?.body?.title;
-  const description = req?.body?.description;
-  const pdfFileName = req?.body?.pdfFileName;
-  const fileUrl = req?.body?.fileUrl;
-  const thumbnailUrl = req?.body?.thumbnailUrl;
-  const status = req?.body?.status;
+  const title = req?.body?.title ?? "";
+  const description = req?.body?.description ?? "";
+  const pdfFileName = req?.body?.pdfFileName ?? "";
+  const fileUrl = req?.body?.fileUrl ?? "";
+  const thumbnailUrl = req?.body?.thumbnailUrl ?? "";
+  const status = req?.body?.status ?? CourseStatus.DRAFT;
+  const price = req?.body?.price ?? 0;
+  const discount = req?.body?.discount ?? 0;
+  const totalPayableAmount = req?.body?.totalPayableAmount ?? 0;
+  const isAvailableForFree = req?.body?.isAvailableForFree;
 
   const response = await addPdfCourseService({
     title: title,
@@ -72,6 +76,10 @@ export const handelAddPdfCourseController = asyncHandler(async (req, res) => {
     pdfFileName: pdfFileName,
     fileUrl: fileUrl,
     thumbnailUrl: thumbnailUrl,
+    price,
+    discount,
+    totalPayableAmount,
+    isAvailableForFree,
   });
 
   return res.status(200).json({
@@ -89,6 +97,11 @@ export const handelEditPdfCourseController = asyncHandler(async (req, res) => {
   const thumbnailUrl = req?.body?.thumbnailUrl;
   const status = req?.body?.status;
 
+  const price = req?.body?.price ?? 0;
+  const discount = req?.body?.discount ?? 0;
+  const totalPayableAmount = req?.body?.totalPayableAmount ?? 0;
+  const isAvailableForFree = req?.body?.isAvailableForFree;
+
   const response = await editPdfCourseService(
     {
       title: title,
@@ -97,6 +110,10 @@ export const handelEditPdfCourseController = asyncHandler(async (req, res) => {
       pdfFileName: pdfFileName,
       fileUrl: fileUrl,
       thumbnailUrl: thumbnailUrl,
+      price,
+      discount,
+      totalPayableAmount,
+      isAvailableForFree,
     },
     course_id,
   );

@@ -15,4 +15,8 @@ export const SUCCESS_MESSAGES = {
   PDF_COURSE_ADDED_SUCCESSFULLY: "Pdf Course Added Successfully",
   PDF_COURSE_FETCHED_SUCCESSFULLY: "Pdf Course Fetched Successfully",
   PDF_COURSE_DELETED_SUCCESSFULLY: "Pdf Course Deleted Successfully",
+
+  AFFILIATE_PRODUCT_ADDED_SUCCESSFULLY: "Affiliate Product Added Successfully",
+  AFFILIATE_PRODUCT_FETCHED_SUCCESSFULLY: "Affiliate Product Fetched Successfully",
+  AFFILIATE_PRODUCT_DELETED_SUCCESSFULLY: "Affiliate Product Deleted Successfully",
 };

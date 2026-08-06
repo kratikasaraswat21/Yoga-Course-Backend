@@ -37,6 +37,10 @@ pdfManager.post(
   body("pdfFileName")?.exists(),
   body("fileUrl")?.exists(),
   body("thumbnailUrl")?.exists(),
+  body("price")?.exists(),
+  body("discount")?.exists(),
+  body("totalPayableAmount")?.exists(),
+  body("isAvailableForFree")?.exists(),
   UserValidateMiddleware,
   handelAddPdfCourseController,
 );
@@ -49,6 +53,10 @@ pdfManager.post(
   body("pdfFileName")?.exists(),
   body("fileUrl")?.exists(),
   body("thumbnailUrl")?.exists(),
+  body("price")?.exists(),
+  body("discount")?.exists(),
+  body("totalPayableAmount")?.exists(),
+  body("isAvailableForFree")?.exists(),
   UserValidateMiddleware,
   handelEditPdfCourseController,
 );

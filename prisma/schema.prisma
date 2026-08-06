@@ -160,6 +160,12 @@ model PdfCourseResource {
   description String?
   status      CourseStatus @default(DRAFT)
 
+  price              Float
+  discount           Int
+  totalPayableAmount Float
+
+  isAvailableForFree Boolean
+
   pdfFileName String
 
   fileUrl      String
@@ -172,4 +178,24 @@ model PdfCourseResource {
 
   @@index([sortOrder])
   @@map("pdf_course_resource")
+}
+
+model AffiliateProducts {
+  id String @id @default(uuid())
+
+  title       String
+  description String?
+  status      CourseStatus @default(DRAFT)
+
+  productsLink String
+  buttonTitle  String
+  thumbnailUrl String
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@map("affiliate_products")
 }
