@@ -1,0 +1,86 @@
+import { AdminValidateMiddleware } from "#src/middlewares/admin-validation.middleware.js";
+import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
+import {
+  addCourseDataForStepOne,
+  deleteCourseThumbnailController,
+  generateCourseThumbnailUploadURL,
+} from "#src/routes/modules/admin/course/course.controller.js";
+import { Router } from "express";
+import { body, param } from "express-validator";
+
+const courseRouter = Router();
+
+const MAX_COURSE_THUMBNAIL_SIZE = 10 * 1024 * 1024;
+
+courseRouter.post(
+  "/cloud/thumbnail/upload-url",
+  AdminValidateMiddleware,
+  body("fileName")
+    .trim()
+    .notEmpty()
+    .withMessage("Thumbnail file name is required")
+    .isLength({ max: 255 })
+    .withMessage("Thumbnail file name cannot exceed 255 characters"),
+
+  body("fileType")
+    .trim()
+    .notEmpty()
+    .withMessage("Thumbnail file type is required")
+    .isIn(["image/jpeg", "image/png", "image/webp"])
+    .withMessage("Only JPEG, PNG and WebP thumbnails are supported"),
+
+  body("fileSize")
+    .notEmpty()
+    .withMessage("Thumbnail file size is required")
+    .isInt({
+      min: 1,
+      max: MAX_COURSE_THUMBNAIL_SIZE,
+    })
+    .withMessage("Thumbnail file size must be between 1 byte and 10 MB")
+    .toInt(),
+  ValidateRequestParametersMiddleware,
+  generateCourseThumbnailUploadURL,
+);
+
+courseRouter.delete(
+  "/cloud/thumbnail/:imageId",
+
+  AdminValidateMiddleware,
+
+  param("imageId")
+    .trim()
+    .notEmpty()
+    .withMessage("Cloudflare image ID is required")
+    .isLength({
+      min: 10,
+      max: 255,
+    })
+    .withMessage("Invalid Cloudflare image ID"),
+
+  ValidateRequestParametersMiddleware,
+
+  deleteCourseThumbnailController,
+);
+
+courseRouter.post(
+  "/add/step-one",
+  AdminValidateMiddleware,
+  body("title").trim().notEmpty().withMessage("Course title is required"),
+  body("description").trim().notEmpty().withMessage("Course description is required").isLength({ max: 2500 }),
+  body("price").trim().notEmpty().withMessage("Course prise is required"),
+  body("discountPercentage")
+    .trim()
+    .notEmpty()
+    .withMessage("Course discount is required")
+    .toInt()
+    .isInt({ min: 0, max: 100 })
+    .withMessage("Course discount range should be between 0% to 100% is required"),
+  body("roundPayableAmount").isBoolean(),
+  body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
+  body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
+
+  ValidateRequestParametersMiddleware,
+  addCourseDataForStepOne,
+);
+
+export default courseRouter;

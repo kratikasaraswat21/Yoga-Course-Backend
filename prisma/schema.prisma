@@ -67,6 +67,14 @@ enum TokenPurpose {
   ADMIN_PASSWORD_RESET
 }
 
+enum VideoStatus {
+  PENDING
+  UPLOADING
+  PROCESSING
+  READY
+  ERROR
+}
+
 //? ------------ User And Authentication Related Models  ----------
 model User {
   id       String @id @default(uuid())
@@ -198,4 +206,63 @@ model AffiliateProducts {
 
   @@index([sortOrder])
   @@map("affiliate_products")
+}
+
+model YogaCourse {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  status      CourseStatus @default(DRAFT)
+
+  price              Decimal @default(0) @db.Decimal(10, 2)
+  discount           Int     @default(0)
+  totalPayableAmount Decimal @default(0) @db.Decimal(10, 2)
+
+  thumbnailUrl String
+  thumbnailId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courseVideos CourseVideo[]
+
+  @@map("yoga_courses")
+}
+
+model CourseVideo {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  originalFileName String
+  fileType         String
+  fileSize         BigInt
+
+  cloudflareVideoUid   String?     @unique
+  status               VideoStatus @default(PENDING)
+  readyToStream        Boolean     @default(false)
+  processingPercentage Float       @default(0)
+
+  durationSeconds Float?
+
+  isCustomThumbnail Boolean @default(false)
+
+  thumbnailUrl String
+  thumbnailId  String
+
+  errorCode    String?
+  errorMessage String?
+
+  sortOrder Int @default(0)
+
+  yogaCourseId String
+
+  yogaCourse YogaCourse @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([yogaCourseId])
+  @@index([yogaCourseId, sortOrder])
+  @@map("course_videos")
 }

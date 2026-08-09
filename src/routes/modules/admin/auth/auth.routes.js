@@ -1,3 +1,4 @@
+import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
 import { ValidateJWTToken } from "#src/middlewares/token.middleware.js";
 import {
   AdminAuthVerifyOtpController,
@@ -20,6 +21,7 @@ adminAuthRoutes.post(
   "/login",
   body("email").isEmail(),
   body("password").trim().isLength({ min: 6, max: 100 }),
+  ValidateRequestParametersMiddleware,
   VerifyAdminLoginCredentialController,
 );
 
@@ -37,6 +39,7 @@ adminAuthRoutes.post(
   "/reset-password",
   body("token").trim().notEmpty(),
   body("password").trim().isLength({ min: 6, max: 100 }),
+  ValidateRequestParametersMiddleware,
   AdminResetPasswordController,
 );
 
@@ -55,6 +58,7 @@ adminAuthRoutes.post(
   body("otp")
     .trim()
     .matches(/^\d{6}$/),
+  ValidateRequestParametersMiddleware,
   AdminAuthVerifyOtpController,
 );
 
@@ -62,6 +66,11 @@ adminAuthRoutes.post(
 //? ROUTE 6 ==> This is the route for Verifying the Admin With the otp
 //
 
-adminAuthRoutes.post("/resend-otp", query("signature"), ResendAdminLoginOtpVerificationOtp);
+adminAuthRoutes.post(
+  "/resend-otp",
+  query("signature"),
+  ValidateRequestParametersMiddleware,
+  ResendAdminLoginOtpVerificationOtp,
+);
 
 export default adminAuthRoutes;

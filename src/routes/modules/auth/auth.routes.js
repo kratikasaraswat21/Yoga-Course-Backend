@@ -1,3 +1,4 @@
+import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
 import { ValidateJWTToken } from "#src/middlewares/token.middleware.js";
 import {
   AuthForgotPasswordController,
@@ -21,6 +22,7 @@ authRoutes.post(
   body("name").trim().exists(),
   body("email").isEmail(),
   body("password").trim().isLength({ min: 6, max: 10 }),
+  ValidateRequestParametersMiddleware,
   AuthSignUpController,
 );
 
@@ -32,6 +34,7 @@ authRoutes.post(
   "/login",
   body("email").isEmail(),
   body("password").trim().isLength({ min: 6, max: 10 }),
+  ValidateRequestParametersMiddleware,
   AuthLoginController,
 );
 
@@ -45,6 +48,7 @@ authRoutes.post(
   body("otp")
     .trim()
     .matches(/^\d{6}$/),
+  ValidateRequestParametersMiddleware,
   AuthVerifyOtpController,
 );
 
@@ -52,13 +56,18 @@ authRoutes.post(
 //? ROUTE 4 ==> This is the route for  resend otp
 //
 
-authRoutes.post("/resend-otp", body("email").isEmail(), AuthResendOtpController);
+authRoutes.post("/resend-otp", body("email").isEmail(), ValidateRequestParametersMiddleware, AuthResendOtpController);
 
 //
 //? ROUTE 5 ==> This is the route for  forgot password
 //
 
-authRoutes.post("/forgot-password", body("email").isEmail(), AuthForgotPasswordController);
+authRoutes.post(
+  "/forgot-password",
+  body("email").isEmail(),
+  ValidateRequestParametersMiddleware,
+  AuthForgotPasswordController,
+);
 
 //
 //? ROUTE 6 ==> This is the route for user reset password
@@ -68,6 +77,7 @@ authRoutes.post(
   "/reset-password",
   body("token").trim().notEmpty(),
   body("password").trim().isLength({ min: 6, max: 100 }),
+  ValidateRequestParametersMiddleware,
   AuthResetPasswordController,
 );
 
