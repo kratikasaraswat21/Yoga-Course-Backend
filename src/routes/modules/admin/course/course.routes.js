@@ -3,8 +3,14 @@ import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-va
 import {
   addCourseDataForStepOne,
   deleteCourseThumbnailController,
+  editCourseDetailsController,
+  fetchCourseDetailsController,
+  fetchCourseStepOneController,
+  fetchAllCoursesController,
   generateCourseThumbnailUploadURL,
+  publishCourseController,
 } from "#src/routes/modules/admin/course/course.controller.js";
+import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { Router } from "express";
 import { body, param } from "express-validator";
 
@@ -81,6 +87,66 @@ courseRouter.post(
 
   ValidateRequestParametersMiddleware,
   addCourseDataForStepOne,
+);
+
+courseRouter.post(
+  "/edit/:courseId",
+  AdminValidateMiddleware,
+  param("courseId")
+    .trim()
+    .notEmpty()
+    .withMessage("course ID is required For Editing The course")
+    .isLength({
+      min: 10,
+      max: 255,
+    })
+    .withMessage("Invalid Cloudflare image ID"),
+  body("title").trim().notEmpty().withMessage("Course title is required"),
+  body("description").trim().notEmpty().withMessage("Course description is required").isLength({ max: 2500 }),
+  body("price").trim().notEmpty().withMessage("Course prise is required"),
+  body("discountPercentage")
+    .trim()
+    .notEmpty()
+    .withMessage("Course discount is required")
+    .toInt()
+    .isInt({ min: 0, max: 100 })
+    .withMessage("Course discount range should be between 0% to 100% is required"),
+  body("roundPayableAmount").isBoolean(),
+  body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
+  body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
+
+  ValidateRequestParametersMiddleware,
+  editCourseDetailsController,
+);
+
+courseRouter.get(
+  "/fetch/course/details/:courseId",
+  AdminValidateMiddleware,
+  param("courseId").trim().notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  fetchCourseDetailsController,
+);
+
+courseRouter.get(
+  "/fetch/all",
+  AdminValidateMiddleware,
+  fetchAllCoursesController,
+);
+
+courseRouter.get(
+  "/fetch/course/step-one/:courseId",
+  AdminValidateMiddleware,
+  param("courseId").trim().notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  fetchCourseStepOneController,
+);
+
+courseRouter.patch(
+  "/publish/:courseId",
+  AdminValidateMiddleware,
+  param("courseId").trim().notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  publishCourseController,
 );
 
 export default courseRouter;

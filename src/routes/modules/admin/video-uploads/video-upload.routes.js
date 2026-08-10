@@ -1,8 +1,14 @@
 import { AdminValidateMiddleware } from "#src/middlewares/admin-validation.middleware.js";
 import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
-import { CreateCloudflareVideoUploadUrlController } from "#src/routes/modules/admin/video-uploads/video-upload.controller.js";
+import {
+  CreateCloudflareVideoUploadUrlController,
+  deleteVideoFromCloudflare,
+  fetchYogaCourseVideosController,
+  reorderCourseVideosController,
+} from "#src/routes/modules/admin/video-uploads/video-upload.controller.js";
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, param, query } from "express-validator";
+import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 
 const videoUploadRoutes = Router();
 
@@ -15,53 +21,89 @@ videoUploadRoutes.post(
 
   AdminValidateMiddleware,
 
-  body("title")
+  body("courseId")
     .trim()
     .notEmpty()
-    .withMessage("Video title is required")
+    .withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED)
     .isLength({
       min: 2,
       max: 150,
     })
-    .withMessage("Video title must contain between 2 and 150 characters"),
+    .withMessage(ERROR_MESSAGES.VIDEO_TITLE_LENGTH_INVALID),
+
+  body("title")
+    .trim()
+    .notEmpty()
+    .withMessage(ERROR_MESSAGES.VIDEO_TITLE_REQUIRED)
+    .isLength({
+      min: 2,
+      max: 150,
+    })
+    .withMessage(ERROR_MESSAGES.VIDEO_TITLE_LENGTH_INVALID),
 
   body("fileName")
     .trim()
     .notEmpty()
-    .withMessage("Video file name is required")
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_NAME_REQUIRED)
     .isLength({
       max: 255,
     })
-    .withMessage("Video file name cannot exceed 255 characters"),
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_NAME_LENGTH_INVALID),
 
   body("fileType")
     .trim()
     .notEmpty()
-    .withMessage("Video file type is required")
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_TYPE_REQUIRED)
     .isIn(["video/mp4", "video/webm", "video/quicktime"])
-    .withMessage("Only MP4, WebM and QuickTime videos are supported"),
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_TYPE_INVALID),
 
   body("fileSize")
     .notEmpty()
-    .withMessage("Video file size is required")
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_SIZE_REQUIRED)
     .isInt({
       min: 1,
       max: MAX_VIDEO_FILE_SIZE,
     })
-    .withMessage("Video file size must be between 1 byte and 5 GB")
+    .withMessage(ERROR_MESSAGES.VIDEO_FILE_SIZE_INVALID)
     .toInt(),
 
   body("maxDurationSeconds")
     .notEmpty()
-    .withMessage("Maximum video duration is required")
-    .isInt({
+    .withMessage(ERROR_MESSAGES.VIDEO_MAX_DURATION_REQUIRED)
+    .isFloat({
       min: 1,
       max: MAX_VIDEO_DURATION_SECONDS,
     })
-    .withMessage("Video duration must be between 1 second and 2 hours")
+    .withMessage(ERROR_MESSAGES.VIDEO_MAX_DURATION_INVALID(MAX_VIDEO_DURATION_SECONDS))
     .toInt(),
+
+  body("thumbnailType").notEmpty().withMessage(ERROR_MESSAGES.VIDEO_THUMBNAIL_TYPE_REQUIRED),
   ValidateRequestParametersMiddleware,
   CreateCloudflareVideoUploadUrlController,
+);
+videoUploadRoutes.get(
+  "/fetch",
+  query("courseId").notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  fetchYogaCourseVideosController,
+);
+
+videoUploadRoutes.put(
+  "/reorder",
+  body("courseId").isString().notEmpty(),
+  body("orderedIds").isArray({ min: 1 }),
+  body("videoId").optional().isString(),
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
+  reorderCourseVideosController,
+);
+
+videoUploadRoutes.delete(
+  "/delete/:videoId",
+  AdminValidateMiddleware,
+  param("videoId").notEmpty().withMessage(ERROR_MESSAGES.VIDEO_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  deleteVideoFromCloudflare,
 );
 
 export default videoUploadRoutes;

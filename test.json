@@ -1,0 +1,14 @@
+{
+    "courseId": "15168fd1-bac4-401c-8a50-fabfcc3099fd",
+    "step": 2,
+    "details": {
+        "title": "this is an test course  Updated",
+        "description": "this is an test course",
+        "price": "1500",
+        "discountPercentage": "0",
+        "roundPayableAmount": false,
+        "thumbnailURL": "https://imagedelivery.net/SH-hcEmOvwBa8LQT3-yUDg/33fd6e05-660d-4411-31d6-64edb81d2700/public",
+        "thumbnailId": "33fd6e05-660d-4411-31d6-64edb81d2700"
+    },
+    "videos": []
+}
