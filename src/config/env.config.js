@@ -8,6 +8,7 @@ export const EnvConfig = {
   HASH_PASSWORD_SALT: parseInt(process.env.HASH_PASSWORD_SALT),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN,
   JWT_SECRET: process.env.JWT_SECRET,
+  AUTH_EMAIL_ENCRYPTION_SECRET: process.env.AUTH_EMAIL_ENCRYPTION_SECRET,
   OTP_EXPIRES_MINUTES: parseInt(process.env.OTP_EXPIRES_MINUTES ?? "10", 10),
   PASSWORD_RESET_EXPIRES_MINUTES: parseInt(process.env.PASSWORD_RESET_EXPIRES_MINUTES ?? "15", 10),
   PASSWORD_RESET_URL: process.env.PASSWORD_RESET_URL ?? "http://localhost:3000/reset-password",

@@ -1,4 +1,13 @@
 export const ERROR_MESSAGES = {
+  NAME_REQUIRED: "Name is required.",
+  INVALID_EMAIL: "Please provide a valid email address.",
+  INVALID_ENCRYPTED_EMAIL: "Invalid or expired email verification reference.",
+  ENCRYPTED_EMAIL_REQUIRED: "Encrypted email is required.",
+  PASSWORD_LENGTH_INVALID: "Password must contain between 6 and 50 characters.",
+  PASSWORD_RESET_LENGTH_INVALID: "Password must contain between 6 and 100 characters.",
+  OTP_INVALID: "OTP must be a valid 6-digit number.",
+  TOKEN_REQUIRED: "Password reset token is required.",
+
   USER_NOT_FOUND: "User not found.",
   USER_ALREADY_EXISTS: "User already exists.",
   INVALID_CREDENTIALS: "Invalid credentials.",

@@ -9,6 +9,7 @@ import {
   AuthVerifyOtpController,
   VerifyUserLoginStatusController,
 } from "#src/routes/modules/auth/auth.controller.js";
+import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { Router } from "express";
 import { body } from "express-validator";
 
@@ -19,9 +20,12 @@ const authRoutes = Router();
 
 authRoutes.post(
   "/sign-up",
-  body("name").trim().exists(),
-  body("email").isEmail(),
-  body("password").trim().isLength({ min: 6, max: 10 }),
+  body("name").trim().exists().withMessage(ERROR_MESSAGES.NAME_REQUIRED),
+  body("email").isEmail().withMessage(ERROR_MESSAGES.INVALID_EMAIL),
+  body("password")
+    .trim()
+    .isLength({ min: 6, max: 50 })
+    .withMessage(ERROR_MESSAGES.PASSWORD_LENGTH_INVALID),
   ValidateRequestParametersMiddleware,
   AuthSignUpController,
 );
@@ -32,8 +36,11 @@ authRoutes.post(
 
 authRoutes.post(
   "/login",
-  body("email").isEmail(),
-  body("password").trim().isLength({ min: 6, max: 10 }),
+  body("email").isEmail().withMessage(ERROR_MESSAGES.INVALID_EMAIL),
+  body("password")
+    .trim()
+    .isLength({ min: 6, max: 50 })
+    .withMessage(ERROR_MESSAGES.PASSWORD_LENGTH_INVALID),
   ValidateRequestParametersMiddleware,
   AuthLoginController,
 );
@@ -44,10 +51,15 @@ authRoutes.post(
 
 authRoutes.post(
   "/verify-otp",
-  body("email").isEmail(),
+  body("email")
+    .trim()
+    .notEmpty()
+    .isLength({ max: 512 })
+    .withMessage(ERROR_MESSAGES.ENCRYPTED_EMAIL_REQUIRED),
   body("otp")
     .trim()
-    .matches(/^\d{6}$/),
+    .matches(/^\d{6}$/)
+    .withMessage(ERROR_MESSAGES.OTP_INVALID),
   ValidateRequestParametersMiddleware,
   AuthVerifyOtpController,
 );
@@ -56,7 +68,16 @@ authRoutes.post(
 //? ROUTE 4 ==> This is the route for  resend otp
 //
 
-authRoutes.post("/resend-otp", body("email").isEmail(), ValidateRequestParametersMiddleware, AuthResendOtpController);
+authRoutes.post(
+  "/resend-otp",
+  body("email")
+    .trim()
+    .notEmpty()
+    .isLength({ max: 512 })
+    .withMessage(ERROR_MESSAGES.ENCRYPTED_EMAIL_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  AuthResendOtpController,
+);
 
 //
 //? ROUTE 5 ==> This is the route for  forgot password
@@ -64,7 +85,7 @@ authRoutes.post("/resend-otp", body("email").isEmail(), ValidateRequestParameter
 
 authRoutes.post(
   "/forgot-password",
-  body("email").isEmail(),
+  body("email").isEmail().withMessage(ERROR_MESSAGES.INVALID_EMAIL),
   ValidateRequestParametersMiddleware,
   AuthForgotPasswordController,
 );
@@ -75,8 +96,11 @@ authRoutes.post(
 
 authRoutes.post(
   "/reset-password",
-  body("token").trim().notEmpty(),
-  body("password").trim().isLength({ min: 6, max: 100 }),
+  body("token").trim().notEmpty().withMessage(ERROR_MESSAGES.TOKEN_REQUIRED),
+  body("password")
+    .trim()
+    .isLength({ min: 6, max: 100 })
+    .withMessage(ERROR_MESSAGES.PASSWORD_RESET_LENGTH_INVALID),
   ValidateRequestParametersMiddleware,
   AuthResetPasswordController,
 );
