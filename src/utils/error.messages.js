@@ -31,6 +31,8 @@ export const ERROR_MESSAGES = {
   CLOUDFLARE_VIDEO_ID_MISSING: "Cloudflare video ID is missing",
   CLOUDFLARE_VIDEO_DELETION_FAILED: "Unable to delete video from Cloudflare Stream",
   VIDEO_NOT_FOUND: "Video not found",
+  VIDEO_NOT_READY: "Video is not ready for playback",
+  VIDEO_PLAYBACK_TOKEN_FAILED: "Unable to generate video playback token",
   COURSE_NOT_FOUND: "Course not found",
   COURSE_HAS_NO_VIDEOS: "Course must contain at least one video before it can be published",
   COURSE_VIDEOS_NOT_READY: "All course videos must be ready to stream before the course can be published",
