@@ -19,4 +19,20 @@ export const SUCCESS_MESSAGES = {
   AFFILIATE_PRODUCT_ADDED_SUCCESSFULLY: "Affiliate Product Added Successfully",
   AFFILIATE_PRODUCT_FETCHED_SUCCESSFULLY: "Affiliate Product Fetched Successfully",
   AFFILIATE_PRODUCT_DELETED_SUCCESSFULLY: "Affiliate Product Deleted Successfully",
+
+  VIDEO_UPLOAD_URL_CREATED_SUCCESSFULLY: "Video Upload Url Created Successfully",
+  VIDEO_DELETED_SUCCESSFULLY: "Video deleted successfully",
+  COURSE_VIDEOS_REORDERED_SUCCESSFULLY: "Course videos reordered successfully",
+
+  COURSE_THUMBNAIL_UPLOAD_URL_GENERATED_SUCCESSFULLY: "Course thumbnail upload URL created successfully",
+
+  COURSE_THUMBNAIL_DELETED_SUCCESSFULLY: "Course thumbnail Deleted successfully",
+
+  COURSE_STEP_ONE_SAVED_SUCCESSFULLY: "Course step one Draft Saved successfully",
+  COURSE_DETAILS_UPDATED_SUCCESSFULLY: "Course details updated successfully",
+  COURSE_STEP_ONE_FETCHED_SUCCESSFULLY: "Course step one details fetched successfully",
+  COURSE_PUBLISHED_SUCCESSFULLY: "Course published successfully",
+  COURSES_FETCHED_SUCCESSFULLY: "Courses fetched successfully",
+
+  COURSE_VIDEOS_FETCHED_SUCCESSFULLY: "Course Videos Fetched Successfully",
 };

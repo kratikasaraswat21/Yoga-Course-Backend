@@ -1,4 +1,5 @@
-import { UserValidateMiddleware } from "#src/middlewares/verify-user.middleware.js";
+import { AdminValidateMiddleware } from "#src/middlewares/admin-validation.middleware.js";
+import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
 import {
   deletePdfCourseController,
   fetchAllPdfCourses,
@@ -13,22 +14,29 @@ import { body, query } from "express-validator";
 
 const pdfManager = Router();
 
-pdfManager.post("/cloud/pdf/signature", UserValidateMiddleware, generatePdfUploadSignature);
+pdfManager.post("/cloud/pdf/signature", AdminValidateMiddleware, generatePdfUploadSignature);
 
-pdfManager.post("/cloud/thumbnail/signature", UserValidateMiddleware, generatePdfThumbnailUploadSignature);
+pdfManager.post("/cloud/thumbnail/signature", AdminValidateMiddleware, generatePdfThumbnailUploadSignature);
 
-pdfManager.get("/fetch", UserValidateMiddleware, fetchAllPdfCourses);
+pdfManager.get("/fetch", AdminValidateMiddleware, fetchAllPdfCourses);
 
 pdfManager.put(
   "/reorder",
   body("orderedIds").isArray({ min: 1 }),
   body("courseId").optional().isString(),
   body("sortOrder").optional().isInt({ min: 1 }),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   reorderPdfCoursesController,
 );
 
-pdfManager.delete("/delete", query("id")?.exists(), UserValidateMiddleware, deletePdfCourseController);
+pdfManager.delete(
+  "/delete",
+  query("id")?.exists(),
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
+  deletePdfCourseController,
+);
 
 pdfManager.post(
   "/add",
@@ -41,7 +49,8 @@ pdfManager.post(
   body("discount")?.exists(),
   body("totalPayableAmount")?.exists(),
   body("isAvailableForFree")?.exists(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   handelAddPdfCourseController,
 );
 
@@ -57,7 +66,8 @@ pdfManager.post(
   body("discount")?.exists(),
   body("totalPayableAmount")?.exists(),
   body("isAvailableForFree")?.exists(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   handelEditPdfCourseController,
 );
 

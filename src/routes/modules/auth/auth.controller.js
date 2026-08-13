@@ -13,6 +13,7 @@ import {
   VerifyUserEmailService,
 } from "#src/routes/modules/auth/auth.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
+import { decryptEmail, encryptEmail } from "#src/utils/email-token.util.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
 import bcrypt from "bcrypt";
@@ -49,7 +50,7 @@ export const AuthSignUpController = asyncHandler(async (req, res) => {
     success: true,
     data: {
       requires_email_verification: true,
-      email: user.email,
+      email: encryptEmail(user.email),
     },
   });
 });
@@ -97,7 +98,14 @@ export const AuthLoginController = asyncHandler(async (req, res) => {
 //
 
 export const AuthVerifyOtpController = asyncHandler(async (req, res) => {
-  const email = req.body.email.trim().toLowerCase();
+  let email;
+
+  try {
+    email = decryptEmail(req.body.email).trim().toLowerCase();
+  } catch {
+    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
+  }
+
   const otp = req.body.otp.trim();
   const user = await GetUserByEmailService(email);
 
@@ -144,7 +152,14 @@ export const AuthVerifyOtpController = asyncHandler(async (req, res) => {
 //
 //
 export const AuthResendOtpController = asyncHandler(async (req, res) => {
-  const email = req.body.email.trim().toLowerCase();
+  let email;
+
+  try {
+    email = decryptEmail(req.body.email).trim().toLowerCase();
+  } catch {
+    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
+  }
+
   const user = await GetUserByEmailService(email);
 
   if (!user) {
@@ -164,7 +179,7 @@ export const AuthResendOtpController = asyncHandler(async (req, res) => {
     success: true,
     data: {
       requires_email_verification: true,
-      email: user.email,
+      email: encryptEmail(user.email),
     },
   });
 });

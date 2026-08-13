@@ -1,6 +1,7 @@
 import { Router } from "express";
 
-import { UserValidateMiddleware } from "#src/middlewares/verify-user.middleware.js";
+import { AdminValidateMiddleware } from "#src/middlewares/admin-validation.middleware.js";
+import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
 import {
   deleteAffiliateProductController,
   fetchAllAffiliateProductsController,
@@ -15,7 +16,7 @@ const affiliateProductsRoute = Router();
 
 affiliateProductsRoute.post(
   "/cloud/affiliate-products/signature",
-  UserValidateMiddleware,
+  AdminValidateMiddleware,
   generateAffiliateProductsUploadSignature,
 );
 
@@ -27,7 +28,8 @@ affiliateProductsRoute.post(
   body("productsLink")?.exists(),
   body("buttonTitle")?.exists(),
   body("thumbnailUrl")?.exists(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   handelAddAffiliateProductsController,
 );
 
@@ -39,7 +41,8 @@ affiliateProductsRoute.post(
   body("productsLink")?.exists(),
   body("buttonTitle")?.exists(),
   body("thumbnailUrl")?.exists(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   handelEditAffiliateProductsController,
 );
 
@@ -47,17 +50,19 @@ affiliateProductsRoute.put(
   "/reorder",
   body("orderedIds").isArray({ min: 1 }),
   body("productId").optional().isString(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   reorderAffiliateProductsController,
 );
 
 affiliateProductsRoute.delete(
   "/delete",
   query("id")?.exists(),
-  UserValidateMiddleware,
+  ValidateRequestParametersMiddleware,
+  AdminValidateMiddleware,
   deleteAffiliateProductController,
 );
 
-affiliateProductsRoute.get("/fetch", UserValidateMiddleware, fetchAllAffiliateProductsController);
+affiliateProductsRoute.get("/fetch", AdminValidateMiddleware, fetchAllAffiliateProductsController);
 
 export default affiliateProductsRoute;

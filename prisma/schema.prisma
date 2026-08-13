@@ -67,6 +67,14 @@ enum TokenPurpose {
   ADMIN_PASSWORD_RESET
 }
 
+enum VideoStatus {
+  PENDING
+  UPLOADING
+  PROCESSING
+  READY
+  ERROR
+}
+
 //? ------------ User And Authentication Related Models  ----------
 model User {
   id       String @id @default(uuid())
@@ -86,6 +94,8 @@ model User {
   authSessions            AuthSession[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  orders                   Order[]
+  enrollments              Enrollment[]
 
   @@index([role])
   @@index([status])
@@ -198,4 +208,148 @@ model AffiliateProducts {
 
   @@index([sortOrder])
   @@map("affiliate_products")
+}
+
+model YogaCourse {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  status      CourseStatus @default(DRAFT)
+
+  price              Decimal @default(0) @db.Decimal(10, 2)
+  discount           Int     @default(0)
+  totalPayableAmount Decimal @default(0) @db.Decimal(10, 2)
+
+  thumbnailUrl String
+  thumbnailId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courseVideos CourseVideo[]
+  orders       Order[]
+  enrollments  Enrollment[]
+
+  @@map("yoga_courses")
+}
+
+model Order {
+  id String @id @default(uuid())
+
+  userId   String
+  courseId String
+  user     User       @relation(fields: [userId], references: [id])
+  course   YogaCourse @relation(fields: [courseId], references: [id])
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("INR")
+  status   OrderStatus @default(CREATED)
+
+  razorpayOrderId String @unique
+
+  payment    Payment?
+  enrollment Enrollment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@map("orders")
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  gateway PaymentGateway @default(RAZORPAY)
+  status  PaymentStatus  @default(CREATED)
+
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+  method             String?
+  failureReason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+model RazorpayWebhookEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  eventType String
+  createdAt DateTime @default(now())
+
+  @@map("razorpay_webhook_events")
+}
+
+model Enrollment {
+  id String @id @default(uuid())
+
+  userId   String
+  courseId String
+  orderId  String @unique
+  user     User       @relation(fields: [userId], references: [id])
+  course   YogaCourse @relation(fields: [courseId], references: [id])
+  order    Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now())
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@map("enrollments")
+}
+
+model CourseVideo {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  originalFileName String
+  fileType         String
+  fileSize         BigInt
+
+  cloudflareVideoUid   String?     @unique
+  status               VideoStatus @default(PENDING)
+  readyToStream        Boolean     @default(false)
+  processingPercentage Float       @default(0)
+
+  durationSeconds Float?
+  width           Int?
+  height          Int?
+  hlsUrl          String?
+  dashUrl         String?
+
+  isCustomThumbnail Boolean @default(false)
+
+  thumbnailUrl String
+  thumbnailId  String
+
+  errorCode    String?
+  errorMessage String?
+
+  sortOrder Int @default(0)
+
+  yogaCourseId String
+
+  yogaCourse YogaCourse @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([yogaCourseId])
+  @@index([yogaCourseId, sortOrder])
+  @@map("course_videos")
 }
