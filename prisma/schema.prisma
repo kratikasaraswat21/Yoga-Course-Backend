@@ -94,6 +94,8 @@ model User {
   authSessions            AuthSession[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  orders                   Order[]
+  enrollments              Enrollment[]
 
   @@index([role])
   @@index([status])
@@ -225,8 +227,89 @@ model YogaCourse {
   updatedAt DateTime @updatedAt
 
   courseVideos CourseVideo[]
+  orders       Order[]
+  enrollments  Enrollment[]
 
   @@map("yoga_courses")
+}
+
+model Order {
+  id String @id @default(uuid())
+
+  userId   String
+  courseId String
+  user     User       @relation(fields: [userId], references: [id])
+  course   YogaCourse @relation(fields: [courseId], references: [id])
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("INR")
+  status   OrderStatus @default(CREATED)
+
+  razorpayOrderId String @unique
+
+  payment    Payment?
+  enrollment Enrollment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@map("orders")
+}
+
+model Payment {
+  id String @id @default(uuid())
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  gateway PaymentGateway @default(RAZORPAY)
+  status  PaymentStatus  @default(CREATED)
+
+  razorpayPaymentId String? @unique
+  razorpaySignature String?
+  method             String?
+  failureReason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+model RazorpayWebhookEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  eventType String
+  createdAt DateTime @default(now())
+
+  @@map("razorpay_webhook_events")
+}
+
+model Enrollment {
+  id String @id @default(uuid())
+
+  userId   String
+  courseId String
+  orderId  String @unique
+  user     User       @relation(fields: [userId], references: [id])
+  course   YogaCourse @relation(fields: [courseId], references: [id])
+  order    Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now())
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@map("enrollments")
 }
 
 model CourseVideo {

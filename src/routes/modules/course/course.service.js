@@ -3,6 +3,44 @@ import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 
+const activeEnrollmentWhere = (userId, courseId) => ({
+  userId,
+  ...(courseId ? { courseId } : {}),
+  status: "ACTIVE",
+  OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+});
+
+export const getPurchasedCoursesService = async (userId) => {
+  const courses = await prisma.yogaCourse.findMany({
+    where: {
+      status: CourseStatus.PUBLISHED,
+      enrollments: { some: activeEnrollmentWhere(userId, undefined) },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true, title: true, description: true, price: true, discount: true,
+      totalPayableAmount: true, thumbnailUrl: true, createdAt: true,
+      _count: { select: { courseVideos: true } },
+    },
+  });
+
+  return courses.map(({ _count, price, totalPayableAmount, ...course }) => ({
+    ...course,
+    price: Number(price),
+    totalPayableAmount: Number(totalPayableAmount),
+    videoCount: _count.courseVideos,
+  }));
+};
+
+const ensureEnrollment = async (userId, courseId) => {
+  const enrollment = await prisma.enrollment.findFirst({ where: activeEnrollmentWhere(userId, courseId) });
+  if (!enrollment) {
+    const error = new Error("You must purchase this course first");
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
 export const getPublishedCoursesService = async () => {
   const courses = await prisma.yogaCourse.findMany({
     where: {
@@ -36,7 +74,8 @@ export const getPublishedCoursesService = async () => {
   }));
 };
 
-export const getPublishedCourseVideosService = async (courseId) => {
+export const getPublishedCourseVideosService = async (courseId, userId) => {
+  if (userId) await ensureEnrollment(userId, courseId);
   const course = await prisma.yogaCourse.findFirst({
     where: {
       id: courseId,
@@ -72,7 +111,7 @@ export const getPublishedCourseVideosService = async (courseId) => {
   return course;
 };
 
-export const getPublishedCourseDetailsService = async (courseId) => {
+export const getPublishedCourseDetailsService = async (courseId, userId) => {
   const course = await prisma.yogaCourse.findFirst({
     where: {
       id: courseId,
@@ -89,6 +128,10 @@ export const getPublishedCourseDetailsService = async (courseId) => {
       thumbnailUrl: true,
       createdAt: true,
       updatedAt: true,
+      enrollments: {
+        where: activeEnrollmentWhere(userId, courseId),
+        select: { id: true },
+      },
       courseVideos: {
         where: {
           status: "READY",
@@ -113,15 +156,19 @@ export const getPublishedCourseDetailsService = async (courseId) => {
     throw error;
   }
 
+  const { enrollments, ...courseData } = course;
+
   return {
-    ...course,
+    ...courseData,
     price: Number(course.price),
     totalPayableAmount: Number(course.totalPayableAmount),
     videoCount: course.courseVideos.length,
+    isPurchased: enrollments.length > 0,
   };
 };
 
-export const getCourseVideoPlaybackService = async ({ courseId, videoId }) => {
+export const getCourseVideoPlaybackService = async ({ courseId, videoId, userId }) => {
+  await ensureEnrollment(userId, courseId);
   const video = await prisma.courseVideo.findFirst({
     where: {
       id: videoId,
@@ -195,7 +242,8 @@ export const getCourseVideoPlaybackService = async ({ courseId, videoId }) => {
   };
 };
 
-export const getOtherCourseVideosService = async ({ courseId, videoId }) => {
+export const getOtherCourseVideosService = async ({ courseId, videoId, userId }) => {
+  if (userId) await ensureEnrollment(userId, courseId);
   const course = await prisma.yogaCourse.findFirst({
     where: {
       id: courseId,

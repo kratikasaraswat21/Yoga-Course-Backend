@@ -91,3 +91,26 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+# Razorpay course payments
+
+Set these environment variables before starting the API:
+
+```env
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
+```
+
+Authenticated payment endpoints:
+
+- `POST /app/api/v1/payments/orders` with `{ "courseId": "..." }`
+- `POST /app/api/v1/payments/verify` with `razorpayOrderId`, `razorpayPaymentId`, and `razorpaySignature`
+- `GET /app/api/v1/courses/my-courses` returns only active purchased courses
+
+Configure this Razorpay Dashboard webhook URL:
+
+```text
+https://<your-domain>/api/webhooks/razorpay/payment
+```
+
+Subscribe to `order.paid` and `payment.captured`. The frontend should wait for the webhook-processed purchase by refreshing the course details (`isPurchased`) or `my-courses` after payment verification.

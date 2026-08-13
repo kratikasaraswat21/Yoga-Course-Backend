@@ -1,4 +1,5 @@
 import routers from "#src/routes/routes.js";
+import razorpayWebhookRoutes from "#src/routes/webhook/razorpay/razorpay-webhook.routes.js";
 import cloudflareStreamWebhookRoutes from "#src/routes/webhook/streams/cloudflare-stream-webhook.routes.js";
 import { errorHandler } from "#src/utils/async-handler.util.js";
 import cors from "cors";
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(helmet());
 
 app.use("/api/webhooks/cloudflare", express.raw({ type: "application/json" }), cloudflareStreamWebhookRoutes);
+app.use("/api/webhooks/razorpay", express.raw({ type: "application/json" }), razorpayWebhookRoutes);
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
