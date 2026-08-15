@@ -7,6 +7,9 @@ import {
   getPublishedCourseVideosController,
   getOtherCourseVideosController,
   getPurchasedCoursesController,
+  createCourseReviewController,
+  createCourseVideoRatingController,
+  completeCourseVideoController,
 } from "#src/routes/modules/course/course.controller.js";
 import { Router } from "express";
 import { param } from "express-validator";
@@ -15,6 +18,32 @@ const courseRoutes = Router();
 
 courseRoutes.get("/", getPublishedCoursesController);
 courseRoutes.get("/my-courses", UserValidateMiddleware, getPurchasedCoursesController);
+
+courseRoutes.post(
+  "/:courseId/review",
+  UserValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  ValidateRequestParametersMiddleware,
+  createCourseReviewController,
+);
+
+courseRoutes.post(
+  "/:courseId/videos/:videoId/rating",
+  UserValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  param("videoId").isUUID().withMessage("Valid video ID is required"),
+  ValidateRequestParametersMiddleware,
+  createCourseVideoRatingController,
+);
+
+courseRoutes.post(
+  "/:courseId/videos/:videoId/complete",
+  UserValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  param("videoId").isUUID().withMessage("Valid video ID is required"),
+  ValidateRequestParametersMiddleware,
+  completeCourseVideoController,
+);
 
 courseRoutes.get(
   "/:courseId",

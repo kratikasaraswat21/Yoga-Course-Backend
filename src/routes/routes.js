@@ -4,14 +4,18 @@ import courseRouter from "#src/routes/modules/admin/course/course.routes.js";
 import pdfManager from "#src/routes/modules/admin/pdfManager/pdf-manager.routes.js";
 import videoUploadRoutes from "#src/routes/modules/admin/video-uploads/video-upload.routes.js";
 import authRoutes from "#src/routes/modules/auth/auth.routes.js";
+import affiliateProductsRoutes from "#src/routes/modules/affiliate-products/affiliate-products.routes.js";
 import courseRoutes from "#src/routes/modules/course/course.routes.js";
 import paymentRoutes from "#src/routes/modules/payment/payment.routes.js";
+import pdfCourseRoutes from "#src/routes/modules/pdf-course/pdf-course.routes.js";
 import { Router } from "express";
 
 const routers = Router();
 
 routers.use("/auth", authRoutes);
 routers.use("/courses", courseRoutes);
+routers.use("/pdf-courses", pdfCourseRoutes);
+routers.use("/affiliate-products", affiliateProductsRoutes);
 routers.use("/payments", paymentRoutes);
 routers.use("/admin/auth", adminAuthRoutes);
 routers.use("/admin/pdf-course", pdfManager);

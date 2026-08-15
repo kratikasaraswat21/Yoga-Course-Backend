@@ -9,6 +9,7 @@ import {
   fetchAllCoursesController,
   generateCourseThumbnailUploadURL,
   publishCourseController,
+  deleteYogaCourseController,
 } from "#src/routes/modules/admin/course/course.controller.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { Router } from "express";
@@ -131,6 +132,14 @@ courseRouter.get(
   "/fetch/all",
   AdminValidateMiddleware,
   fetchAllCoursesController,
+);
+
+courseRouter.delete(
+  "/delete/:courseId",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  ValidateRequestParametersMiddleware,
+  deleteYogaCourseController,
 );
 
 courseRouter.get(
