@@ -7,6 +7,27 @@ import {
   getPurchasedCoursesService,
 } from "#src/routes/modules/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
+import { createCourseReviewService, createCourseVideoRatingService } from "#src/routes/modules/course/course-review.service.js";
+import { completeCourseVideoService } from "#src/routes/modules/course/course-progress.service.js";
+
+export const completeCourseVideoController = asyncHandler(async (req, res) => {
+  const completion = await completeCourseVideoService({ userId: req.user.id, courseId: req.params.courseId, videoId: req.params.videoId });
+  return res.status(completion.alreadyCompleted ? 200 : 201).json({
+    success: true,
+    message: completion.alreadyCompleted ? "Video was already completed" : "Video completed successfully",
+    data: { completion },
+  });
+});
+
+export const createCourseReviewController = asyncHandler(async (req, res) => {
+  const review = await createCourseReviewService({ userId: req.user.id, courseId: req.params.courseId, rating: req.body.rating, comment: req.body.comment });
+  return res.status(201).json({ success: true, message: "Course review submitted successfully", data: { review } });
+});
+
+export const createCourseVideoRatingController = asyncHandler(async (req, res) => {
+  const rating = await createCourseVideoRatingService({ userId: req.user.id, courseId: req.params.courseId, videoId: req.params.videoId, rating: req.body.rating });
+  return res.status(201).json({ success: true, message: "Video rating submitted successfully", data: { rating } });
+});
 
 export const getPublishedCoursesController = asyncHandler(async (req, res) => {
   const courses = await getPublishedCoursesService();

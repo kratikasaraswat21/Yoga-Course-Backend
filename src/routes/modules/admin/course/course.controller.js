@@ -9,6 +9,7 @@ import {
   fetchAllYogaCoursesService,
   publishYogaCourseService,
   updateYogaCourseDetailsService,
+  deleteYogaCourseService,
 } from "#src/routes/modules/admin/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
@@ -190,5 +191,15 @@ export const fetchAllCoursesController = asyncHandler(async (req, res) => {
     data: {
       courses,
     },
+  });
+});
+
+export const deleteYogaCourseController = asyncHandler(async (req, res) => {
+  const result = await deleteYogaCourseService(req.params.courseId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Course and all associated assets deleted successfully",
+    data: result,
   });
 });

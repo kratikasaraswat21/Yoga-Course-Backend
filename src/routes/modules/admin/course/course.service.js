@@ -2,6 +2,19 @@ import { EnvConfig } from "#src/config/env.config.js";
 import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
+import { deleteYogaCourseVideoFromCloudFlair } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
+
+const isValidCloudflareImageId = (imageId) => Boolean(imageId && imageId !== "-");
+
+const deleteCloudflareImageIfPresent = async (imageId) => {
+  try {
+    return await deleteThumbnailImageService({ encodedImageId: encodeURIComponent(imageId), imageId });
+  } catch (error) {
+    // The database can contain an image ID that was already deleted in Cloudflare.
+    if (error.statusCode === 404 || error.message === "Image not found") return null;
+    throw error;
+  }
+};
 
 export const getCloudFlairImageUploadURL = async ({ formData }) => {
   const response = await fetch(
@@ -280,13 +293,85 @@ export const fetchAllYogaCoursesService = async () => {
       _count: {
         select: {
           courseVideos: true,
+          enrollments: {
+            where: {
+              status: "ACTIVE",
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+          },
+        },
+      },
+      reviews: {
+        select: {
+          rating: true,
         },
       },
     },
   });
 
-  return courses.map(({ _count, ...course }) => ({
+  return courses.map(({ _count, reviews, ...course }) => ({
     ...course,
     videoCount: _count.courseVideos,
+    totalEnrolledStudents: _count.enrollments,
+    averageRating:
+      reviews.length > 0
+        ? Number((reviews.reduce((total, review) => total + Number(review.rating), 0) / reviews.length).toFixed(2))
+        : 0,
   }));
+};
+
+export const deleteYogaCourseService = async (courseId) => {
+  const course = await prisma.yogaCourse.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      thumbnailId: true,
+      courseVideos: {
+        select: {
+          cloudflareVideoUid: true,
+          thumbnailId: true,
+        },
+      },
+      _count: {
+        select: {
+          orders: true,
+          enrollments: true,
+        },
+      },
+    },
+  });
+
+  if (!course) {
+    const error = new Error(ERROR_MESSAGES.COURSE_NOT_FOUND);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (course._count.orders > 0 || course._count.enrollments > 0) {
+    const error = new Error("Course cannot be deleted because it has enrolled students");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const imageIds = [course.thumbnailId, ...course.courseVideos.map((video) => video.thumbnailId)].filter(
+    isValidCloudflareImageId,
+  );
+  const uniqueImageIds = [...new Set(imageIds)];
+
+  await Promise.all([
+    ...course.courseVideos
+      .map((video) => video.cloudflareVideoUid)
+      .filter(Boolean)
+      .map((videoUid) => deleteYogaCourseVideoFromCloudFlair(videoUid)),
+    ...uniqueImageIds.map((imageId) => deleteCloudflareImageIfPresent(imageId)),
+  ]);
+
+  await prisma.yogaCourse.delete({ where: { id: courseId } });
+
+  return {
+    courseId,
+    deletedVideoCount: course.courseVideos.length,
+    deletedThumbnailCount: uniqueImageIds.length,
+    deleted: true,
+  };
 };

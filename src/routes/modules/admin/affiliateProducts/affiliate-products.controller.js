@@ -38,7 +38,7 @@ export const handelAddAffiliateProductsController = asyncHandler(async (req, res
   const title = req?.body?.title ?? "";
   const description = req?.body?.description ?? "";
   const status = req?.body?.status ?? CourseStatus.DRAFT;
-  const productsLink = req?.body?.productsLink ?? "";
+  const productsLink = req?.body?.affiliateLink ?? "";
   const buttonTitle = req?.body?.buttonTitle ?? "";
   const thumbnailUrl = req?.body?.thumbnailUrl ?? "";
 
@@ -62,7 +62,7 @@ export const handelEditAffiliateProductsController = asyncHandler(async (req, re
   const title = req?.body?.title ?? "";
   const description = req?.body?.description ?? "";
   const status = req?.body?.status ?? CourseStatus.DRAFT;
-  const productsLink = req?.body?.productsLink ?? "";
+  const productsLink = req?.body?.affiliateLink ?? "";
   const buttonTitle = req?.body?.buttonTitle ?? "";
   const thumbnailUrl = req?.body?.thumbnailUrl ?? "";
 

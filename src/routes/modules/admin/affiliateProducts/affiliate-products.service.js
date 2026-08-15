@@ -1,4 +1,5 @@
 import { EnvConfig } from "#src/config/env.config.js";
+import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -53,6 +54,23 @@ export const fetchAffiliateProductsService = async () => {
   return prisma.AffiliateProducts.findMany({
     orderBy: {
       sortOrder: "asc",
+    },
+  });
+};
+
+export const fetchPublishedAffiliateProductsService = async () => {
+  return prisma.AffiliateProducts.findMany({
+    where: { status: CourseStatus.PUBLISHED },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      productsLink: true,
+      buttonTitle: true,
+      thumbnailUrl: true,
+      sortOrder: true,
+      createdAt: true,
     },
   });
 };

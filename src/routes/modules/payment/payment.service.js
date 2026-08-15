@@ -76,6 +76,66 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
   return { orderId: order.id, razorpayOrderId: razorpayOrder.id, amount, currency: "INR", keyId: EnvConfig.RAZORPAY_KEY_ID, course: { id: course.id, title: course.title } };
 };
 
+export const createPdfCourseOrderService = async ({ userId, pdfCourseId }) => {
+  const course = await prisma.pdfCourseResource.findFirst({
+    where: { id: pdfCourseId, status: CourseStatus.PUBLISHED },
+    select: { id: true, title: true, totalPayableAmount: true, isAvailableForFree: true },
+  });
+  if (!course) {
+    const error = new Error("PDF course not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  if (course.isAvailableForFree) {
+    const error = new Error("This PDF course is available for free");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const alreadyEnrolled = await prisma.enrollment.findFirst({
+    where: { userId, pdfCourseId, status: "ACTIVE", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+  });
+  if (alreadyEnrolled) {
+    const error = new Error("You already own this PDF course");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const amount = Math.round(Number(course.totalPayableAmount) * 100);
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    const error = new Error("PDF course price must be greater than zero");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const razorpayOrder = await razorpayRequest("/orders", {
+    method: "POST",
+    body: JSON.stringify({
+      amount,
+      currency: "INR",
+      receipt: `pdf_${course.id.slice(0, 8)}_${Date.now()}`,
+      notes: { userId, pdfCourseId },
+    }),
+  });
+
+  const order = await prisma.order.create({
+    data: {
+      userId, pdfCourseId, amount: Number(course.totalPayableAmount), currency: "INR",
+      status: "PAYMENT_PENDING", razorpayOrderId: razorpayOrder.id,
+      payment: { create: { gateway: "RAZORPAY", status: "CREATED" } },
+    },
+  });
+
+  return {
+    orderId: order.id,
+    razorpayOrderId: razorpayOrder.id,
+    amount,
+    currency: "INR",
+    keyId: EnvConfig.RAZORPAY_KEY_ID,
+    course: { id: course.id, title: course.title },
+  };
+};
+
 export const verifyCoursePaymentService = async ({ userId, razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
   if (!EnvConfig.RAZORPAY_KEY_SECRET) {
     const error = new Error("Razorpay configuration is missing");
@@ -128,11 +188,19 @@ export const processRazorpayWebhookService = async ({ eventId, eventType, orderI
       where: { orderId: order.id },
       data: { status: "CAPTURED", razorpayPaymentId: paymentId ?? undefined },
     });
-    await transaction.enrollment.upsert({
-      where: { userId_courseId: { userId: order.userId, courseId: order.courseId } },
-      update: { status: "ACTIVE", revokedAt: null, orderId: order.id },
-      create: { userId: order.userId, courseId: order.courseId, orderId: order.id, status: "ACTIVE" },
-    });
+    if (order.pdfCourseId) {
+      await transaction.enrollment.upsert({
+        where: { userId_pdfCourseId: { userId: order.userId, pdfCourseId: order.pdfCourseId } },
+        update: { status: "ACTIVE", revokedAt: null, orderId: order.id },
+        create: { userId: order.userId, pdfCourseId: order.pdfCourseId, orderId: order.id, status: "ACTIVE" },
+      });
+    } else {
+      await transaction.enrollment.upsert({
+        where: { userId_courseId: { userId: order.userId, courseId: order.courseId } },
+        update: { status: "ACTIVE", revokedAt: null, orderId: order.id },
+        create: { userId: order.userId, courseId: order.courseId, orderId: order.id, status: "ACTIVE" },
+      });
+    }
     await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
 
     return { duplicate: false, processed: true };

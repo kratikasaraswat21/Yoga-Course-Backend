@@ -96,6 +96,9 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   orders                   Order[]
   enrollments              Enrollment[]
+  courseReviews            CourseReview[]
+  courseVideoRatings       CourseVideoRating[]
+  courseVideoCompletions   CourseVideoCompletion[]
 
   @@index([role])
   @@index([status])
@@ -183,6 +186,9 @@ model PdfCourseResource {
 
   sortOrder Int @default(0)
 
+  orders      Order[]
+  enrollments Enrollment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -229,6 +235,7 @@ model YogaCourse {
   courseVideos CourseVideo[]
   orders       Order[]
   enrollments  Enrollment[]
+  reviews      CourseReview[]
 
   @@map("yoga_courses")
 }
@@ -237,9 +244,11 @@ model Order {
   id String @id @default(uuid())
 
   userId   String
-  courseId String
-  user     User       @relation(fields: [userId], references: [id])
-  course   YogaCourse @relation(fields: [courseId], references: [id])
+  courseId    String?
+  pdfCourseId String?
+  user        User             @relation(fields: [userId], references: [id])
+  course      YogaCourse?      @relation(fields: [courseId], references: [id])
+  pdfCourse   PdfCourseResource? @relation(fields: [pdfCourseId], references: [id])
 
   amount   Decimal @db.Decimal(10, 2)
   currency String  @default("INR")
@@ -255,6 +264,7 @@ model Order {
 
   @@index([userId, status])
   @@index([courseId, status])
+  @@index([pdfCourseId, status])
   @@map("orders")
 }
 
@@ -292,11 +302,13 @@ model Enrollment {
   id String @id @default(uuid())
 
   userId   String
-  courseId String
-  orderId  String @unique
-  user     User       @relation(fields: [userId], references: [id])
-  course   YogaCourse @relation(fields: [courseId], references: [id])
-  order    Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courseId    String?
+  pdfCourseId String?
+  orderId     String? @unique
+  user        User              @relation(fields: [userId], references: [id])
+  course      YogaCourse?       @relation(fields: [courseId], references: [id])
+  pdfCourse   PdfCourseResource? @relation(fields: [pdfCourseId], references: [id])
+  order       Order?            @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   status     EnrollmentStatus @default(ACTIVE)
   enrolledAt DateTime         @default(now())
@@ -307,8 +319,10 @@ model Enrollment {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, courseId])
+  @@unique([userId, pdfCourseId])
   @@index([userId, status])
   @@index([courseId, status])
+  @@index([pdfCourseId, status])
   @@map("enrollments")
 }
 
@@ -345,6 +359,8 @@ model CourseVideo {
   yogaCourseId String
 
   yogaCourse YogaCourse @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
+  ratings    CourseVideoRating[]
+  completions CourseVideoCompletion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -352,4 +368,56 @@ model CourseVideo {
   @@index([yogaCourseId])
   @@index([yogaCourseId, sortOrder])
   @@map("course_videos")
+}
+
+model CourseReview {
+  id       String @id @default(uuid())
+  userId   String
+  courseId String
+  rating   Float
+  comment  String?
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course YogaCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@map("course_reviews")
+}
+
+model CourseVideoRating {
+  id      String @id @default(uuid())
+  userId  String
+  videoId String
+  rating  Float
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video CourseVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@map("course_video_ratings")
+}
+
+model CourseVideoCompletion {
+  id          String   @id @default(uuid())
+  userId      String
+  videoId     String
+  completedAt DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video CourseVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@map("course_video_completions")
 }

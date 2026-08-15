@@ -97,6 +97,11 @@ export const getPublishedCourseVideosService = async (courseId, userId) => {
           thumbnailUrl: true,
           durationSeconds: true,
           sortOrder: true,
+          completions: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
         },
       },
     },
@@ -108,7 +113,13 @@ export const getPublishedCourseVideosService = async (courseId, userId) => {
     throw error;
   }
 
-  return course;
+  return {
+    ...course,
+    courseVideos: course.courseVideos.map(({ completions, ...video }) => ({
+      ...video,
+      isCompleted: completions.length > 0,
+    })),
+  };
 };
 
 export const getPublishedCourseDetailsService = async (courseId, userId) => {
@@ -187,6 +198,11 @@ export const getCourseVideoPlaybackService = async ({ courseId, videoId, userId 
       hlsUrl: true,
       dashUrl: true,
       thumbnailUrl: true,
+      completions: {
+        where: { userId },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
 
@@ -239,6 +255,7 @@ export const getCourseVideoPlaybackService = async ({ courseId, videoId, userId 
     hlsUrl: replaceVideoUidWithToken(video.hlsUrl),
     dashUrl: replaceVideoUidWithToken(video.dashUrl),
     thumbnailUrl: video.thumbnailUrl,
+    isCompleted: video.completions.length > 0,
   };
 };
 
