@@ -1,4 +1,5 @@
 import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-validator.middleware.js";
+import { OptionalUserMiddleware } from "#src/middlewares/optional-user.middleware.js";
 import { UserValidateMiddleware } from "#src/middlewares/verify-user.middleware.js";
 import {
   getCourseVideoPlaybackController,
@@ -16,7 +17,7 @@ import { param } from "express-validator";
 
 const courseRoutes = Router();
 
-courseRoutes.get("/", getPublishedCoursesController);
+courseRoutes.get("/", OptionalUserMiddleware, getPublishedCoursesController);
 courseRoutes.get("/my-courses", UserValidateMiddleware, getPurchasedCoursesController);
 
 courseRoutes.post(

@@ -7,6 +7,7 @@ import {
   fetchCourseDetailsController,
   fetchCourseStepOneController,
   fetchAllCoursesController,
+  getCourseAnalyticsController,
   generateCourseThumbnailUploadURL,
   publishCourseController,
   deleteYogaCourseController,
@@ -132,6 +133,14 @@ courseRouter.get(
   "/fetch/all",
   AdminValidateMiddleware,
   fetchAllCoursesController,
+);
+
+courseRouter.get(
+  "/analytics/:courseId",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  ValidateRequestParametersMiddleware,
+  getCourseAnalyticsController,
 );
 
 courseRouter.delete(

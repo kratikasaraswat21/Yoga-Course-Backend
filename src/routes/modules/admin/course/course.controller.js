@@ -7,6 +7,7 @@ import {
   getYogaCourseStepOneService,
   getCloudFlairImageUploadURL,
   fetchAllYogaCoursesService,
+  getYogaCourseAnalyticsService,
   publishYogaCourseService,
   updateYogaCourseDetailsService,
   deleteYogaCourseService,
@@ -191,6 +192,16 @@ export const fetchAllCoursesController = asyncHandler(async (req, res) => {
     data: {
       courses,
     },
+  });
+});
+
+export const getCourseAnalyticsController = asyncHandler(async (req, res) => {
+  const analytics = await getYogaCourseAnalyticsService(req.params.courseId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Course analytics fetched successfully",
+    data: analytics,
   });
 });
 
