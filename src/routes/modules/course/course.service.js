@@ -21,14 +21,24 @@ export const getPurchasedCoursesService = async (userId) => {
       id: true, title: true, description: true, price: true, discount: true,
       totalPayableAmount: true, thumbnailUrl: true, createdAt: true,
       _count: { select: { courseVideos: true } },
+      courseVideos: {
+        select: {
+          completions: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
     },
   });
 
-  return courses.map(({ _count, price, totalPayableAmount, ...course }) => ({
+  return courses.map(({ _count, courseVideos, price, totalPayableAmount, ...course }) => ({
     ...course,
     price: Number(price),
     totalPayableAmount: Number(totalPayableAmount),
     videoCount: _count.courseVideos,
+    completedVideoCount: courseVideos.filter((video) => video.completions.length > 0).length,
   }));
 };
 
@@ -41,10 +51,17 @@ const ensureEnrollment = async (userId, courseId) => {
   }
 };
 
-export const getPublishedCoursesService = async () => {
+export const getPublishedCoursesService = async (userId) => {
   const courses = await prisma.yogaCourse.findMany({
     where: {
       status: CourseStatus.PUBLISHED,
+      ...(userId
+        ? {
+            enrollments: {
+              none: activeEnrollmentWhere(userId, undefined),
+            },
+          }
+        : {}),
     },
     orderBy: {
       createdAt: "desc",
@@ -143,6 +160,11 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
         where: activeEnrollmentWhere(userId, courseId),
         select: { id: true },
       },
+      reviews: {
+        where: { userId },
+        select: { id: true },
+        take: 1,
+      },
       courseVideos: {
         where: {
           status: "READY",
@@ -156,6 +178,11 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
           thumbnailUrl: true,
           durationSeconds: true,
           sortOrder: true,
+          completions: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
         },
       },
     },
@@ -167,14 +194,22 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
     throw error;
   }
 
-  const { enrollments, ...courseData } = course;
+  const { enrollments, reviews, ...courseData } = course;
+  const videosWithCompletion = course.courseVideos.map(({ completions, ...video }) => ({
+    ...video,
+    isCompleted: completions.length > 0,
+  }));
 
   return {
     ...courseData,
     price: Number(course.price),
     totalPayableAmount: Number(course.totalPayableAmount),
-    videoCount: course.courseVideos.length,
+    courseVideos: videosWithCompletion,
+    videoCount: videosWithCompletion.length,
     isPurchased: enrollments.length > 0,
+    hasReviewed: reviews.length > 0,
+    isCourseCompleted:
+      videosWithCompletion.length > 0 && videosWithCompletion.every((video) => video.isCompleted),
   };
 };
 
@@ -198,6 +233,15 @@ export const getCourseVideoPlaybackService = async ({ courseId, videoId, userId 
       hlsUrl: true,
       dashUrl: true,
       thumbnailUrl: true,
+      yogaCourse: {
+        select: {
+          reviews: {
+            where: { userId },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      },
       completions: {
         where: { userId },
         select: { id: true },
@@ -256,6 +300,7 @@ export const getCourseVideoPlaybackService = async ({ courseId, videoId, userId 
     dashUrl: replaceVideoUidWithToken(video.dashUrl),
     thumbnailUrl: video.thumbnailUrl,
     isCompleted: video.completions.length > 0,
+    hasReviewed: video.yogaCourse.reviews.length > 0,
   };
 };
 

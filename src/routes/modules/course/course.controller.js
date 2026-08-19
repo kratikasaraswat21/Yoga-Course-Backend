@@ -30,7 +30,7 @@ export const createCourseVideoRatingController = asyncHandler(async (req, res) =
 });
 
 export const getPublishedCoursesController = asyncHandler(async (req, res) => {
-  const courses = await getPublishedCoursesService();
+  const courses = await getPublishedCoursesService(req.user?.id);
 
   return res.status(200).json({
     success: true,

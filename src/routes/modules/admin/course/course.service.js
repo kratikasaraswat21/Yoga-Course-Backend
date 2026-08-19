@@ -320,6 +320,118 @@ export const fetchAllYogaCoursesService = async () => {
   }));
 };
 
+const averageRating = (ratings) =>
+  ratings.length > 0
+    ? Number((ratings.reduce((total, item) => total + Number(item.rating), 0) / ratings.length).toFixed(2))
+    : 0;
+
+export const getYogaCourseAnalyticsService = async (courseId) => {
+  const course = await prisma.yogaCourse.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      price: true,
+      discount: true,
+      totalPayableAmount: true,
+      thumbnailUrl: true,
+      thumbnailId: true,
+      createdAt: true,
+      updatedAt: true,
+      enrollments: {
+        orderBy: { enrolledAt: "desc" },
+        select: {
+          id: true,
+          status: true,
+          enrolledAt: true,
+          expiresAt: true,
+          revokedAt: true,
+          user: { select: { id: true, name: true, email: true, status: true } },
+        },
+      },
+      reviews: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, email: true, status: true } },
+        },
+      },
+      courseVideos: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          originalFileName: true,
+          fileType: true,
+          fileSize: true,
+          status: true,
+          readyToStream: true,
+          processingPercentage: true,
+          durationSeconds: true,
+          thumbnailUrl: true,
+          thumbnailId: true,
+          sortOrder: true,
+          createdAt: true,
+          updatedAt: true,
+          ratings: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              rating: true,
+              createdAt: true,
+              updatedAt: true,
+              user: { select: { id: true, name: true, email: true, status: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!course) {
+    const error = new Error(ERROR_MESSAGES.COURSE_NOT_FOUND);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const { enrollments, reviews, courseVideos, ...courseInfo } = course;
+  const activeEnrollments = enrollments.filter(
+    (enrollment) =>
+      enrollment.status === "ACTIVE" && (!enrollment.expiresAt || enrollment.expiresAt > new Date()),
+  );
+
+  return {
+    course: {
+      ...courseInfo,
+      price: Number(courseInfo.price),
+      totalPayableAmount: Number(courseInfo.totalPayableAmount),
+    },
+    analytics: {
+      totalEnrollments: enrollments.length,
+      activeEnrollments: activeEnrollments.length,
+      totalCourseReviews: reviews.length,
+      averageCourseRating: averageRating(reviews),
+      totalVideoRatings: courseVideos.reduce((total, video) => total + video.ratings.length, 0),
+    },
+    enrolledUsers: enrollments,
+    courseReviews: reviews,
+    videos: courseVideos.map(({ ratings, fileSize, ...video }) => ({
+      ...video,
+      fileSize: fileSize.toString(),
+      totalRatings: ratings.length,
+      averageRating: averageRating(ratings),
+      ratings,
+    })),
+  };
+};
+
 export const deleteYogaCourseService = async (courseId) => {
   const course = await prisma.yogaCourse.findUnique({
     where: { id: courseId },
