@@ -11,6 +11,8 @@ import {
   publishYogaCourseService,
   updateYogaCourseDetailsService,
   deleteYogaCourseService,
+  revokeCourseAccessService,
+  restoreCourseAccessService,
 } from "#src/routes/modules/admin/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
@@ -212,5 +214,32 @@ export const deleteYogaCourseController = asyncHandler(async (req, res) => {
     success: true,
     message: "Course and all associated assets deleted successfully",
     data: result,
+  });
+});
+
+export const revokeCourseAccessController = asyncHandler(async (req, res) => {
+  const enrollment = await revokeCourseAccessService({
+    courseId: req.params.courseId,
+    userId: req.params.userId,
+    reason: req.body.reason.trim(),
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Course access revoked successfully",
+    data: { enrollment },
+  });
+});
+
+export const restoreCourseAccessController = asyncHandler(async (req, res) => {
+  const enrollment = await restoreCourseAccessService({
+    courseId: req.params.courseId,
+    userId: req.params.userId,
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Course access restored successfully",
+    data: { enrollment },
   });
 });

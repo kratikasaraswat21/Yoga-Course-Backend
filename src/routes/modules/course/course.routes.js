@@ -11,6 +11,8 @@ import {
   createCourseReviewController,
   createCourseVideoRatingController,
   completeCourseVideoController,
+  getTopRatedLandingCoursesController,
+  getAllLandingCoursesController,
 } from "#src/routes/modules/course/course.controller.js";
 import { Router } from "express";
 import { param } from "express-validator";
@@ -18,6 +20,8 @@ import { param } from "express-validator";
 const courseRoutes = Router();
 
 courseRoutes.get("/", OptionalUserMiddleware, getPublishedCoursesController);
+courseRoutes.get("/top-rated", getTopRatedLandingCoursesController);
+courseRoutes.get("/all", getAllLandingCoursesController);
 courseRoutes.get("/my-courses", UserValidateMiddleware, getPurchasedCoursesController);
 
 courseRoutes.post(

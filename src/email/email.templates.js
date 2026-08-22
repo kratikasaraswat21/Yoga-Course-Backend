@@ -27,7 +27,36 @@ export const GetEmailTemplate = async (templateName, data) => {
 
     case "ADMIN_EMAIL_OTP_VERIFICATION":
       return await AdminLoginOtpVerificationTemplate(data);
+
+    case "EMAIL_COURSE_ACCESS_REVOKED":
+      return await CourseAccessRevokedTemplate(data);
+
+    case "EMAIL_COURSE_ACCESS_RESTORED":
+      return await CourseAccessRestoredTemplate(data);
   }
+};
+
+const CourseAccessRevokedTemplate = async (data) => {
+  const { name, courseTitle, reason } = data;
+  const subject = `Your access to ${courseTitle} has been revoked`;
+  const html = await RenderEmailTemplate("course_access_revoked.html", {
+    USER_NAME: name,
+    COURSE_TITLE: courseTitle,
+    REVOCATION_REASON: reason,
+  });
+
+  return { subject, html };
+};
+
+const CourseAccessRestoredTemplate = async (data) => {
+  const { name, courseTitle } = data;
+  const subject = `Congratulations! Your access to ${courseTitle} is restored`;
+  const html = await RenderEmailTemplate("course_access_restored.html", {
+    USER_NAME: name,
+    COURSE_TITLE: courseTitle,
+  });
+
+  return { subject, html };
 };
 
 const EmailOtpVerificationTemplate = async (data) => {

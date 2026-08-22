@@ -75,6 +75,25 @@ export const fetchPublishedAffiliateProductsService = async () => {
   });
 };
 
+const getLandingAffiliateProductsService = async (take) =>
+  prisma.AffiliateProducts.findMany({
+    where: { status: CourseStatus.PUBLISHED },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    ...(take ? { take } : {}),
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      productsLink: true,
+      buttonTitle: true,
+      thumbnailUrl: true,
+    },
+  });
+
+export const getTopLandingAffiliateProductsService = async () => getLandingAffiliateProductsService(5);
+
+export const getAllLandingAffiliateProductsService = async () => getLandingAffiliateProductsService();
+
 export const reorderAffiliateProductsService = async ({ productId, orderedIds }) => {
   if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
     const error = new Error("orderedIds must be a non-empty array.");

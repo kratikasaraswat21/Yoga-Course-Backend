@@ -5,6 +5,8 @@ import {
   getPublishedPdfCoursesController,
   getPurchasedPdfCoursesController,
   getPdfCourseAccessController,
+  getTopLandingPdfCoursesController,
+  getAllLandingPdfCoursesController,
 } from "#src/routes/modules/pdf-course/pdf-course.controller.js";
 import { Router } from "express";
 import { param } from "express-validator";
@@ -12,6 +14,8 @@ import { param } from "express-validator";
 const pdfCourseRoutes = Router();
 
 pdfCourseRoutes.get("/", getPublishedPdfCoursesController);
+pdfCourseRoutes.get("/top", getTopLandingPdfCoursesController);
+pdfCourseRoutes.get("/all", getAllLandingPdfCoursesController);
 pdfCourseRoutes.get("/explore", UserValidateMiddleware, getPublishedPdfCoursesController);
 pdfCourseRoutes.get("/my-courses", UserValidateMiddleware, getPurchasedPdfCoursesController);
 pdfCourseRoutes.get("/purchased", UserValidateMiddleware, getPurchasedPdfCoursesController);

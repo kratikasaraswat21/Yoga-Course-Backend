@@ -3,12 +3,32 @@ import {
   getPublishedPdfCoursesService,
   getPurchasedPdfCoursesService,
   getPdfCourseAccessService,
+  getTopLandingPdfCoursesService,
+  getAllLandingPdfCoursesService,
 } from "#src/routes/modules/pdf-course/pdf-course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 
 export const getPublishedPdfCoursesController = asyncHandler(async (req, res) => {
   const pdfCourses = await getPublishedPdfCoursesService(req.user?.id);
   return res.status(200).json({ success: true, message: "PDF courses fetched successfully", data: { pdfCourses } });
+});
+
+export const getTopLandingPdfCoursesController = asyncHandler(async (req, res) => {
+  const pdfCourses = await getTopLandingPdfCoursesService();
+  return res.status(200).json({
+    success: true,
+    message: "Top PDF courses fetched successfully",
+    data: { pdfCourses },
+  });
+});
+
+export const getAllLandingPdfCoursesController = asyncHandler(async (req, res) => {
+  const pdfCourses = await getAllLandingPdfCoursesService();
+  return res.status(200).json({
+    success: true,
+    message: "All PDF courses fetched successfully",
+    data: { pdfCourses },
+  });
 });
 
 export const getPurchasedPdfCoursesController = asyncHandler(async (req, res) => {
