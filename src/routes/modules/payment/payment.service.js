@@ -191,13 +191,13 @@ export const processRazorpayWebhookService = async ({ eventId, eventType, orderI
     if (order.pdfCourseId) {
       await transaction.enrollment.upsert({
         where: { userId_pdfCourseId: { userId: order.userId, pdfCourseId: order.pdfCourseId } },
-        update: { status: "ACTIVE", revokedAt: null, orderId: order.id },
+        update: { status: "ACTIVE", revokedAt: null, revokeReason: null, orderId: order.id },
         create: { userId: order.userId, pdfCourseId: order.pdfCourseId, orderId: order.id, status: "ACTIVE" },
       });
     } else {
       await transaction.enrollment.upsert({
         where: { userId_courseId: { userId: order.userId, courseId: order.courseId } },
-        update: { status: "ACTIVE", revokedAt: null, orderId: order.id },
+        update: { status: "ACTIVE", revokedAt: null, revokeReason: null, orderId: order.id },
         create: { userId: order.userId, courseId: order.courseId, orderId: order.id, status: "ACTIVE" },
       });
     }

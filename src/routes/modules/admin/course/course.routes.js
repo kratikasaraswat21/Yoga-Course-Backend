@@ -11,6 +11,8 @@ import {
   generateCourseThumbnailUploadURL,
   publishCourseController,
   deleteYogaCourseController,
+  revokeCourseAccessController,
+  restoreCourseAccessController,
 } from "#src/routes/modules/admin/course/course.controller.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { Router } from "express";
@@ -141,6 +143,30 @@ courseRouter.get(
   param("courseId").isUUID().withMessage("Valid course ID is required"),
   ValidateRequestParametersMiddleware,
   getCourseAnalyticsController,
+);
+
+courseRouter.post(
+  "/:courseId/users/:userId/revoke-access",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  param("userId").isUUID().withMessage("Valid user ID is required"),
+  body("reason")
+    .trim()
+    .notEmpty()
+    .withMessage("A reason is required to revoke course access")
+    .isLength({ min: 5, max: 1000 })
+    .withMessage("The revocation reason must be between 5 and 1000 characters"),
+  ValidateRequestParametersMiddleware,
+  revokeCourseAccessController,
+);
+
+courseRouter.post(
+  "/:courseId/users/:userId/restore-access",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  param("userId").isUUID().withMessage("Valid user ID is required"),
+  ValidateRequestParametersMiddleware,
+  restoreCourseAccessController,
 );
 
 courseRouter.delete(

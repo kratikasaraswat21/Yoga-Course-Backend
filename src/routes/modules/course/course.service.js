@@ -43,10 +43,20 @@ export const getPurchasedCoursesService = async (userId) => {
 };
 
 const ensureEnrollment = async (userId, courseId) => {
-  const enrollment = await prisma.enrollment.findFirst({ where: activeEnrollmentWhere(userId, courseId) });
-  if (!enrollment) {
-    const error = new Error("You must purchase this course first");
-    error.statusCode = 403;
+  const enrollment = await prisma.enrollment.findFirst({
+    where: { userId, courseId },
+    select: { status: true, expiresAt: true },
+  });
+  const hasActiveEnrollment =
+    enrollment?.status === "ACTIVE" && (!enrollment.expiresAt || enrollment.expiresAt > new Date());
+
+  if (!hasActiveEnrollment) {
+    const error = new Error(
+      enrollment?.status === "REVOKED"
+        ? "Your access to this course has been revoked"
+        : "You have not purchased this course",
+    );
+    error.statusCode = 400;
     throw error;
   }
 };
@@ -90,6 +100,70 @@ export const getPublishedCoursesService = async (userId) => {
     videoCount: _count.courseVideos,
   }));
 };
+
+const getLandingPageCourses = async () => {
+  const courses = await prisma.yogaCourse.findMany({
+    where: { status: CourseStatus.PUBLISHED },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      price: true,
+      discount: true,
+      totalPayableAmount: true,
+      thumbnailUrl: true,
+      createdAt: true,
+      courseVideos: {
+        select: { durationSeconds: true },
+      },
+      reviews: {
+        select: { rating: true },
+      },
+      enrollments: {
+        where: {
+          status: "ACTIVE",
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { id: true },
+      },
+    },
+  });
+
+  return courses
+    .map(({ courseVideos, reviews, enrollments, createdAt, price, totalPayableAmount, ...course }) => {
+      const totalDurationSeconds = courseVideos.reduce(
+        (total, video) => total + (Number(video.durationSeconds) || 0),
+        0,
+      );
+      const rating = reviews.length
+        ? Number((reviews.reduce((total, review) => total + Number(review.rating), 0) / reviews.length).toFixed(2))
+        : 0;
+
+      return {
+        courseId: course.id,
+        title: course.title,
+        description: course.description,
+        rating,
+        price: Number(price),
+        discount: course.discount,
+        totalPayableAmount: Number(totalPayableAmount),
+        totalVideos: courseVideos.length,
+        totalHours: Number((totalDurationSeconds / 3600).toFixed(2)),
+        totalStudents: enrollments.length,
+        thumbnail: course.thumbnailUrl,
+        createdAt,
+      };
+    })
+    .sort((firstCourse, secondCourse) => secondCourse.rating - firstCourse.rating || secondCourse.createdAt - firstCourse.createdAt)
+    .map(({ createdAt, ...course }) => course);
+};
+
+export const getTopRatedLandingCoursesService = async () => {
+  const courses = await getLandingPageCourses();
+  return courses.slice(0, 3);
+};
+
+export const getAllLandingCoursesService = async () => getLandingPageCourses();
 
 export const getPublishedCourseVideosService = async (courseId, userId) => {
   if (userId) await ensureEnrollment(userId, courseId);
@@ -157,8 +231,10 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
       createdAt: true,
       updatedAt: true,
       enrollments: {
-        where: activeEnrollmentWhere(userId, courseId),
-        select: { id: true },
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: 1,
+        select: { id: true, status: true, expiresAt: true },
       },
       reviews: {
         where: { userId },
@@ -195,6 +271,9 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
   }
 
   const { enrollments, reviews, ...courseData } = course;
+  const enrollment = enrollments[0];
+  const hasActiveEnrollment =
+    enrollment?.status === "ACTIVE" && (!enrollment.expiresAt || enrollment.expiresAt > new Date());
   const videosWithCompletion = course.courseVideos.map(({ completions, ...video }) => ({
     ...video,
     isCompleted: completions.length > 0,
@@ -206,7 +285,9 @@ export const getPublishedCourseDetailsService = async (courseId, userId) => {
     totalPayableAmount: Number(course.totalPayableAmount),
     courseVideos: videosWithCompletion,
     videoCount: videosWithCompletion.length,
-    isPurchased: enrollments.length > 0,
+    isPurchased: hasActiveEnrollment,
+    isBought: hasActiveEnrollment,
+    isAccessRevoked: enrollment?.status === "REVOKED",
     hasReviewed: reviews.length > 0,
     isCourseCompleted:
       videosWithCompletion.length > 0 && videosWithCompletion.every((video) => video.isCompleted),

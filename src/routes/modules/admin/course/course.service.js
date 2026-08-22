@@ -3,6 +3,7 @@ import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { deleteYogaCourseVideoFromCloudFlair } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
+import { SendEmailNotificationService } from "#src/email/email.service.js";
 
 const isValidCloudflareImageId = (imageId) => Boolean(imageId && imageId !== "-");
 
@@ -348,6 +349,7 @@ export const getYogaCourseAnalyticsService = async (courseId) => {
           enrolledAt: true,
           expiresAt: true,
           revokedAt: true,
+          revokeReason: true,
           user: { select: { id: true, name: true, email: true, status: true } },
         },
       },
@@ -430,6 +432,81 @@ export const getYogaCourseAnalyticsService = async (courseId) => {
       ratings,
     })),
   };
+};
+
+export const revokeCourseAccessService = async ({ courseId, userId, reason }) => {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+    select: {
+      id: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+      course: { select: { title: true } },
+    },
+  });
+
+  if (!enrollment) {
+    const error = new Error("No enrollment found for this user and course");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (enrollment.status !== "ACTIVE") {
+    const error = new Error("Course access is already revoked or inactive");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const revokedEnrollment = await prisma.enrollment.update({
+    where: { id: enrollment.id },
+    data: { status: "REVOKED", revokedAt: new Date(), revokeReason: reason },
+    select: { id: true, status: true, revokedAt: true, revokeReason: true },
+  });
+
+  await SendEmailNotificationService(enrollment.user.email, "EMAIL_COURSE_ACCESS_REVOKED", {
+    name: enrollment.user.name,
+    courseTitle: enrollment.course.title,
+    reason,
+  });
+
+  return revokedEnrollment;
+};
+
+export const restoreCourseAccessService = async ({ courseId, userId }) => {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+    select: {
+      id: true,
+      status: true,
+      user: { select: { name: true, email: true } },
+      course: { select: { title: true } },
+    },
+  });
+
+  if (!enrollment) {
+    const error = new Error("No enrollment found for this user and course");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (enrollment.status !== "REVOKED") {
+    const error = new Error("Course access is not revoked");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const restoredEnrollment = await prisma.enrollment.update({
+    where: { id: enrollment.id },
+    data: { status: "ACTIVE", revokedAt: null, revokeReason: null },
+    select: { id: true, status: true, revokedAt: true },
+  });
+
+  await SendEmailNotificationService(enrollment.user.email, "EMAIL_COURSE_ACCESS_RESTORED", {
+    name: enrollment.user.name,
+    courseTitle: enrollment.course.title,
+  });
+
+  return restoredEnrollment;
 };
 
 export const deleteYogaCourseService = async (courseId) => {

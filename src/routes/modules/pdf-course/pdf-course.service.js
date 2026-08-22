@@ -30,6 +30,42 @@ const toPublicPdf = ({ price, totalPayableAmount, ...course }) => ({
   totalPayableAmount: Number(totalPayableAmount),
 });
 
+const getLandingPdfCourses = async (take) => {
+  const courses = await prisma.pdfCourseResource.findMany({
+    where: { status: CourseStatus.PUBLISHED },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    ...(take ? { take } : {}),
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      price: true,
+      discount: true,
+      totalPayableAmount: true,
+      thumbnailUrl: true,
+      _count: {
+        select: {
+          enrollments: {
+            where: {
+              status: "ACTIVE",
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return courses.map(({ _count, ...course }) => ({
+    ...toPublicPdf(course),
+    enrolledStudents: _count.enrollments,
+  }));
+};
+
+export const getTopLandingPdfCoursesService = async () => getLandingPdfCourses(5);
+
+export const getAllLandingPdfCoursesService = async () => getLandingPdfCourses();
+
 export const getPublishedPdfCoursesService = async (userId) => {
   const courses = await prisma.pdfCourseResource.findMany({
     where: {
