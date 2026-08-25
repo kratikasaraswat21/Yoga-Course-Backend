@@ -7,6 +7,7 @@ import {
   getPurchasedCoursesService,
   getTopRatedLandingCoursesService,
   getAllLandingCoursesService,
+  getLandingPageReviewsService,
 } from "#src/routes/modules/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { createCourseReviewService, createCourseVideoRatingService } from "#src/routes/modules/course/course-review.service.js";
@@ -60,6 +61,16 @@ export const getAllLandingCoursesController = asyncHandler(async (req, res) => {
     success: true,
     message: "Landing page courses fetched successfully",
     data: { courses },
+  });
+});
+
+export const getLandingPageReviewsController = asyncHandler(async (req, res) => {
+  const reviews = await getLandingPageReviewsService();
+
+  return res.status(200).json({
+    success: true,
+    message: "Landing page reviews fetched successfully",
+    data: { reviews },
   });
 });
 

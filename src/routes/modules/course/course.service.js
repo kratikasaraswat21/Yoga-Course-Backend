@@ -165,6 +165,38 @@ export const getTopRatedLandingCoursesService = async () => {
 
 export const getAllLandingCoursesService = async () => getLandingPageCourses();
 
+export const getLandingPageReviewsService = async () => {
+  return prisma.courseReview.findMany({
+    where: {
+      course: {
+        status: CourseStatus.PUBLISHED,
+      },
+      user: {
+        status: "ACTIVE",
+      },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 30,
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      createdAt: true,
+      user: {
+        select: {
+          name: true,
+        },
+      },
+      course: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  });
+};
+
 export const getPublishedCourseVideosService = async (courseId, userId) => {
   if (userId) await ensureEnrollment(userId, courseId);
   const course = await prisma.yogaCourse.findFirst({
