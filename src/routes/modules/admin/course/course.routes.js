@@ -3,16 +3,16 @@ import { ValidateRequestParametersMiddleware } from "#src/middlewares/express-va
 import {
   addCourseDataForStepOne,
   deleteCourseThumbnailController,
+  deleteYogaCourseController,
   editCourseDetailsController,
+  fetchAllCoursesController,
   fetchCourseDetailsController,
   fetchCourseStepOneController,
-  fetchAllCoursesController,
-  getCourseAnalyticsController,
   generateCourseThumbnailUploadURL,
+  getCourseAnalyticsController,
   publishCourseController,
-  deleteYogaCourseController,
-  revokeCourseAccessController,
   restoreCourseAccessController,
+  revokeCourseAccessController,
 } from "#src/routes/modules/admin/course/course.controller.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { Router } from "express";
@@ -83,7 +83,6 @@ courseRouter.post(
     .notEmpty()
     .withMessage("Course discount is required")
     .toInt()
-    .isInt({ min: 0, max: 100 })
     .withMessage("Course discount range should be between 0% to 100% is required"),
   body("roundPayableAmount").isBoolean(),
   body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
@@ -112,7 +111,6 @@ courseRouter.post(
     .trim()
     .notEmpty()
     .withMessage("Course discount is required")
-    .toInt()
     .isInt({ min: 0, max: 100 })
     .withMessage("Course discount range should be between 0% to 100% is required"),
   body("roundPayableAmount").isBoolean(),
@@ -131,11 +129,7 @@ courseRouter.get(
   fetchCourseDetailsController,
 );
 
-courseRouter.get(
-  "/fetch/all",
-  AdminValidateMiddleware,
-  fetchAllCoursesController,
-);
+courseRouter.get("/fetch/all", AdminValidateMiddleware, fetchAllCoursesController);
 
 courseRouter.get(
   "/analytics/:courseId",
