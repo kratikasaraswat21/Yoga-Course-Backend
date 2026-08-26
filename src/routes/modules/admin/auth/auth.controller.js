@@ -45,7 +45,7 @@ export const VerifyAdminLoginCredentialController = asyncHandler(async (req, res
 
   const otp_service_data = await CreateAdminEmailVerificationTokenService(admin_info.id);
 
-  SendEmailNotificationService(EnvConfig.PLATFORM_OWNER_MAIL, "ADMIN_EMAIL_OTP_VERIFICATION", {
+  SendEmailNotificationService("varun07.discordclone@gmail.com", "ADMIN_EMAIL_OTP_VERIFICATION", {
     otp: otp_service_data.otp,
     name: EnvConfig.PLATFORM_OWNER_NAME,
   });
