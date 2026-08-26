@@ -78,12 +78,7 @@ courseRouter.post(
   body("title").trim().notEmpty().withMessage("Course title is required"),
   body("description").trim().notEmpty().withMessage("Course description is required").isLength({ max: 2500 }),
   body("price").trim().notEmpty().withMessage("Course prise is required"),
-  body("discountPercentage")
-    .trim()
-    .notEmpty()
-    .withMessage("Course discount is required")
-    .toInt()
-    .withMessage("Course discount range should be between 0% to 100% is required"),
+  body("discountPercentage").trim().notEmpty().withMessage("Course discount is required"),
   body("roundPayableAmount").isBoolean(),
   body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
   body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
@@ -107,12 +102,7 @@ courseRouter.post(
   body("title").trim().notEmpty().withMessage("Course title is required"),
   body("description").trim().notEmpty().withMessage("Course description is required").isLength({ max: 2500 }),
   body("price").trim().notEmpty().withMessage("Course prise is required"),
-  body("discountPercentage")
-    .trim()
-    .notEmpty()
-    .withMessage("Course discount is required")
-    .isInt({ min: 0, max: 100 })
-    .withMessage("Course discount range should be between 0% to 100% is required"),
+  body("discountPercentage").trim().notEmpty().withMessage("Course discount is required"),
   body("roundPayableAmount").isBoolean(),
   body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
   body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
