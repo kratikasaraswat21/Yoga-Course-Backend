@@ -41,6 +41,7 @@ export const SendEmailNotificationService = async (email, templateName, data) =>
 
     console.log("Message sent: %s", info?.id);
   } catch (err) {
+    return err
     console.error("Error while sending mail:", err);
   }
 };
