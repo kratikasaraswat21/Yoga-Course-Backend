@@ -29,7 +29,7 @@ export const SendEmailNotificationService = async (email, templateName, data) =>
   const response = await GetEmailTemplate(templateName, data);
   try {
     const { data: info, error } = await transporter.emails.send({
-      from: '"Kratika Yoga" <noreply@kratikayoga.com>',
+      from: '"Kratika Yoga" <kratikasaraswat21@gmail.com>',
       to: email,
       subject: response.subject,
       html: response.html,
