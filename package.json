@@ -17,6 +17,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate": "prisma generate",
+    "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy",
     "predev": "prisma generate",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
