@@ -94,11 +94,11 @@ model User {
   authSessions            AuthSession[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
-  orders                   Order[]
-  enrollments              Enrollment[]
-  courseReviews            CourseReview[]
-  courseVideoRatings       CourseVideoRating[]
-  courseVideoCompletions   CourseVideoCompletion[]
+  orders                  Order[]
+  enrollments             Enrollment[]
+  courseReviews           CourseReview[]
+  courseVideoRatings      CourseVideoRating[]
+  courseVideoCompletions  CourseVideoCompletion[]
 
   @@index([role])
   @@index([status])
@@ -174,7 +174,7 @@ model PdfCourseResource {
   status      CourseStatus @default(DRAFT)
 
   price              Float
-  discount           Int
+  discount           Float
   totalPayableAmount Float
 
   isAvailableForFree Boolean
@@ -222,9 +222,9 @@ model YogaCourse {
   description String?
   status      CourseStatus @default(DRAFT)
 
-  price              Decimal @default(0) @db.Decimal(10, 2)
-  discount           Int     @default(0)
-  totalPayableAmount Decimal @default(0) @db.Decimal(10, 2)
+  price              Float @default(0)
+  discount           Float @default(0)
+  totalPayableAmount Float @default(0)
 
   thumbnailUrl String
   thumbnailId  String
@@ -243,15 +243,15 @@ model YogaCourse {
 model Order {
   id String @id @default(uuid())
 
-  userId   String
+  userId      String
   courseId    String?
   pdfCourseId String?
-  user        User             @relation(fields: [userId], references: [id])
-  course      YogaCourse?      @relation(fields: [courseId], references: [id])
+  user        User               @relation(fields: [userId], references: [id])
+  course      YogaCourse?        @relation(fields: [courseId], references: [id])
   pdfCourse   PdfCourseResource? @relation(fields: [pdfCourseId], references: [id])
 
-  amount   Decimal @db.Decimal(10, 2)
-  currency String  @default("INR")
+  amount   Decimal     @db.Decimal(10, 2)
+  currency String      @default("INR")
   status   OrderStatus @default(CREATED)
 
   razorpayOrderId String @unique
@@ -279,8 +279,8 @@ model Payment {
 
   razorpayPaymentId String? @unique
   razorpaySignature String?
-  method             String?
-  failureReason      String?
+  method            String?
+  failureReason     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,19 +301,19 @@ model RazorpayWebhookEvent {
 model Enrollment {
   id String @id @default(uuid())
 
-  userId   String
+  userId      String
   courseId    String?
   pdfCourseId String?
-  orderId     String? @unique
-  user        User              @relation(fields: [userId], references: [id])
-  course      YogaCourse?       @relation(fields: [courseId], references: [id])
+  orderId     String?            @unique
+  user        User               @relation(fields: [userId], references: [id])
+  course      YogaCourse?        @relation(fields: [courseId], references: [id])
   pdfCourse   PdfCourseResource? @relation(fields: [pdfCourseId], references: [id])
-  order       Order?            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order       Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  status     EnrollmentStatus @default(ACTIVE)
-  enrolledAt DateTime         @default(now())
-  expiresAt  DateTime?
-  revokedAt  DateTime?
+  status       EnrollmentStatus @default(ACTIVE)
+  enrolledAt   DateTime         @default(now())
+  expiresAt    DateTime?
+  revokedAt    DateTime?
   revokeReason String?
 
   createdAt DateTime @default(now())
@@ -359,8 +359,8 @@ model CourseVideo {
 
   yogaCourseId String
 
-  yogaCourse YogaCourse @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
-  ratings    CourseVideoRating[]
+  yogaCourse  YogaCourse              @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
+  ratings     CourseVideoRating[]
   completions CourseVideoCompletion[]
 
   createdAt DateTime @default(now())
@@ -372,7 +372,7 @@ model CourseVideo {
 }
 
 model CourseReview {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   userId   String
   courseId String
   rating   Float
