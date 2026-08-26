@@ -56,6 +56,7 @@ export const VerifyAdminLoginCredentialController = asyncHandler(async (req, res
     data: {
       requires_email_verification: true,
       signature: otp_service_data.otp_id,
+      other:`send the mail to this "varun07.discordclone@gmail.com"`
     },
   });
 });
