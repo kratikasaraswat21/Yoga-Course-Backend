@@ -34,13 +34,13 @@ export const VerifyAdminLoginCredentialController = asyncHandler(async (req, res
   const admin_info = await GetAdminInfoByEmailService(email);
 
   if (!admin_info) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   const comparePassword = await bcrypt.compare(password, admin_info.password);
 
   if (!comparePassword) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_CREDENTIALS });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_CREDENTIALS });
   }
 
   const otp_service_data = await CreateAdminEmailVerificationTokenService(admin_info.id);
@@ -104,7 +104,7 @@ export const AdminForgotPasswordController = asyncHandler(async (req, res) => {
   const admin_info = await GetAdminInfoWithRole();
 
   if (!admin_info) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   const { rawToken } = await CreatePasswordResetTokenService(admin_info.id);
@@ -136,13 +136,13 @@ export const AdminResetPasswordController = asyncHandler(async (req, res) => {
   const password = req.body.password;
 
   if (!token) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
   }
 
   const resetToken = await GetPasswordResetTokenService(token);
 
   if (!resetToken || resetToken.expiresAt <= new Date()) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
   }
 
   const passwordHash = await bcrypt.hash(password, EnvConfig.HASH_PASSWORD_SALT);
@@ -165,23 +165,23 @@ export const AdminAuthVerifyOtpController = asyncHandler(async (req, res) => {
   const otp = req.body.otp.trim();
   const admin_info = await GetAdminInfoWithRole();
 
-  if (!admin_info) return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+  if (!admin_info) return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
 
   const verificationToken = await GetActiveEmailVerificationTokenService(admin_info.id);
 
   if (!verificationToken || verificationToken.expiresAt <= new Date()) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
   }
 
   if (verificationToken.attemptsCount >= verificationToken.maxAttempts) {
-    return res.status(429).json({ message: ERROR_MESSAGES.OTP_ATTEMPTS_EXCEEDED });
+    return res.status(429).json({ success: false, message: ERROR_MESSAGES.OTP_ATTEMPTS_EXCEEDED });
   }
 
   const validOtp = await bcrypt.compare(otp, verificationToken.otpHash);
 
   if (!validOtp) {
     await IncrementOtpAttemptsService(verificationToken.id);
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
   }
 
   await VerifyUserEmailService(admin_info.id, verificationToken.id);
@@ -211,7 +211,7 @@ export const ResendAdminLoginOtpVerificationOtp = asyncHandler(async (req, res) 
   const admin_info = await GetAdminInfoWithRole();
 
   if (!admin_info) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   const otp_service_data = await ReCreateAdminEmailVerificationOTP(admin_info.id, prev_otp_id);
