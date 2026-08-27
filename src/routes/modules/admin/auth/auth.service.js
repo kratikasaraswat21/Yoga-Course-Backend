@@ -230,3 +230,10 @@ export const VerifyUserEmailService = async (userId, tokenId) => {
     }),
   ]);
 };
+
+export const IncrementOtpAttemptsService = async (id) => {
+  return prisma.emailVerificationToken.update({
+    where: { id },
+    data: { attemptsCount: { increment: 1 } },
+  });
+};
