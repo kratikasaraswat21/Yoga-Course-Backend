@@ -2,19 +2,18 @@ import { EnvConfig } from "#src/config/env.config.js";
 import { SendEmailNotificationService } from "#src/email/email.service.js";
 import {
   CreateAdminEmailVerificationTokenService,
+  CreatePasswordResetTokenService,
+  GetActiveEmailVerificationTokenService,
   GetAdminInfoByEmailService,
   GetAdminInfoById,
   GetAdminInfoWithRole,
-  ReCreateAdminEmailVerificationOTP,
-  ResetAdminPasswordService,
-} from "#src/routes/modules/admin/auth/auth.service.js";
-import {
-  CreatePasswordResetTokenService,
-  GetActiveEmailVerificationTokenService,
   GetPasswordResetTokenService,
   IncrementOtpAttemptsService,
+  ReCreateAdminEmailVerificationOTP,
+  ResetAdminPasswordService,
   VerifyUserEmailService,
-} from "#src/routes/modules/auth/auth.service.js";
+} from "#src/routes/modules/admin/auth/auth.service.js";
+
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
