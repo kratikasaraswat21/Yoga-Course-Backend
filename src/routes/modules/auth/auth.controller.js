@@ -34,7 +34,7 @@ export const AuthSignUpController = asyncHandler(async (req, res) => {
   const findUser = await GetUserByEmailService(normalizedEmail);
 
   if (findUser) {
-    return res.status(400).json({ message: ERROR_MESSAGES.USER_ALREADY_EXISTS });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.USER_ALREADY_EXISTS });
   }
 
   const passwordHash = bcrypt.hashSync(password, EnvConfig.HASH_PASSWORD_SALT);
@@ -69,13 +69,13 @@ export const AuthLoginController = asyncHandler(async (req, res) => {
   const findUser = await GetUserByEmailService(normalizedEmail);
 
   if (!findUser) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   const comparePassword = await bcrypt.compare(password, findUser.password);
 
   if (!comparePassword) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_CREDENTIALS });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_CREDENTIALS });
   }
 
   const jwt_token = jwt.sign({ id: findUser.id, email: findUser.email }, EnvConfig.JWT_SECRET, {
@@ -103,32 +103,32 @@ export const AuthVerifyOtpController = asyncHandler(async (req, res) => {
   try {
     email = decryptEmail(req.body.email).trim().toLowerCase();
   } catch {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
   }
 
   const otp = req.body.otp.trim();
   const user = await GetUserByEmailService(email);
 
-  if (!user) return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+  if (!user) return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
 
   if (user.emailVerifiedAt) {
-    return res.status(400).json({ message: ERROR_MESSAGES.EMAIL_ALREADY_VERIFIED });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.EMAIL_ALREADY_VERIFIED });
   }
 
   const verificationToken = await GetActiveEmailVerificationTokenService(user.id);
 
   if (!verificationToken || verificationToken.expiresAt <= new Date()) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
   }
 
   if (verificationToken.attemptsCount >= verificationToken.maxAttempts) {
-    return res.status(429).json({ message: ERROR_MESSAGES.OTP_ATTEMPTS_EXCEEDED });
+    return res.status(429).json({ success: false, message: ERROR_MESSAGES.OTP_ATTEMPTS_EXCEEDED });
   }
 
   const validOtp = await bcrypt.compare(otp, verificationToken.otpHash);
   if (!validOtp) {
     await IncrementOtpAttemptsService(verificationToken.id);
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_OTP });
   }
 
   await VerifyUserEmailService(user.id, verificationToken.id);
@@ -157,17 +157,17 @@ export const AuthResendOtpController = asyncHandler(async (req, res) => {
   try {
     email = decryptEmail(req.body.email).trim().toLowerCase();
   } catch {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_ENCRYPTED_EMAIL });
   }
 
   const user = await GetUserByEmailService(email);
 
   if (!user) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   if (user.emailVerifiedAt) {
-    return res.status(400).json({ message: ERROR_MESSAGES.EMAIL_ALREADY_VERIFIED });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.EMAIL_ALREADY_VERIFIED });
   }
 
   const verification = await CreateEmailVerificationTokenService(user.id);
@@ -195,7 +195,7 @@ export const AuthForgotPasswordController = asyncHandler(async (req, res) => {
 
   const user = await GetUserByEmailService(email);
   if (!user) {
-    return res.status(404).json({ message: ERROR_MESSAGES.USER_NOT_FOUND });
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
   }
 
   const { rawToken } = await CreatePasswordResetTokenService(user.id);
@@ -226,13 +226,13 @@ export const AuthResetPasswordController = asyncHandler(async (req, res) => {
   const password = req.body.password;
 
   if (!token) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
   }
 
   const resetToken = await GetPasswordResetTokenService(token);
 
   if (!resetToken || resetToken.expiresAt <= new Date()) {
-    return res.status(400).json({ message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
+    return res.status(400).json({ success: false, message: ERROR_MESSAGES.INVALID_OR_EXPIRED_PASSWORD_RESET_TOKEN });
   }
 
   const passwordHash = await bcrypt.hash(password, EnvConfig.HASH_PASSWORD_SALT);

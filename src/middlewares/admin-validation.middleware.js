@@ -10,7 +10,7 @@ export const AdminValidateMiddleware = asyncHandler(async (req, res, next) => {
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ message: ERROR_MESSAGES.ACCESS_DENIED });
+    return res.status(401).json({ success: false, message: ERROR_MESSAGES.ACCESS_DENIED });
   }
 
   try {
@@ -29,6 +29,6 @@ export const AdminValidateMiddleware = asyncHandler(async (req, res, next) => {
 
     next();
   } catch (error) {
-    return res.status(403).json({ message: ERROR_MESSAGES.INVALID_TOKEN });
+    return res.status(403).json({ message: ERROR_MESSAGES.INVALID_TOKEN, success: false });
   }
 });

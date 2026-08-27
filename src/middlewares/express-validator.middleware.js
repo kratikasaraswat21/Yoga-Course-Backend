@@ -16,6 +16,6 @@ export const ValidateRequestParametersMiddleware = asyncHandler(async (req, res,
 
     next();
   } catch (error) {
-    return res.status(403).json({ message: ERROR_MESSAGES.INVALID_TOKEN });
+    return res.status(403).json({ message: ERROR_MESSAGES.INVALID_TOKEN, success: false });
   }
 });
