@@ -21,6 +21,7 @@ export const SUCCESS_MESSAGES = {
   AFFILIATE_PRODUCT_DELETED_SUCCESSFULLY: "Affiliate Product Deleted Successfully",
 
   VIDEO_UPLOAD_URL_CREATED_SUCCESSFULLY: "Video Upload Url Created Successfully",
+  VIDEO_DETAILS_UPDATED_SUCCESSFULLY: "Video details updated successfully",
   VIDEO_DELETED_SUCCESSFULLY: "Video deleted successfully",
   COURSE_VIDEOS_REORDERED_SUCCESSFULLY: "Course videos reordered successfully",
 

@@ -7,6 +7,7 @@ import {
   fetchVideoDetailsService,
   getVideoUploadMetadata,
   reorderCourseVideosService,
+  updateVideoDetailsService,
   updateVideoObjectWithCloudflareMetadata,
 } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
@@ -98,6 +99,28 @@ export const reorderCourseVideosController = asyncHandler(async (req, res) => {
     success: true,
     data: {
       videos,
+    },
+  });
+});
+
+export const updateVideoDetailsController = asyncHandler(async (req, res) => {
+  const { videoId, title, description, thumbnailId, thumbnailUrl } = req.body;
+
+  const video = await updateVideoDetailsService(videoId, {
+    title,
+    description,
+    thumbnailId,
+    thumbnailUrl,
+  });
+
+  return res.status(200).json({
+    message: SUCCESS_MESSAGES.VIDEO_DETAILS_UPDATED_SUCCESSFULLY,
+    success: true,
+    data: {
+      video: {
+        ...video,
+        fileSize: video.fileSize.toString(),
+      },
     },
   });
 });

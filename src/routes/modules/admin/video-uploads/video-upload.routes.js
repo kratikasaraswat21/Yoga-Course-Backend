@@ -5,6 +5,7 @@ import {
   deleteVideoFromCloudflare,
   fetchYogaCourseVideosController,
   reorderCourseVideosController,
+  updateVideoDetailsController,
 } from "#src/routes/modules/admin/video-uploads/video-upload.controller.js";
 import { Router } from "express";
 import { body, param, query } from "express-validator";
@@ -86,6 +87,27 @@ videoUploadRoutes.get(
   query("courseId").notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
   ValidateRequestParametersMiddleware,
   fetchYogaCourseVideosController,
+);
+
+videoUploadRoutes.put(
+  "/edit",
+  AdminValidateMiddleware,
+  body("videoId").trim().notEmpty().withMessage(ERROR_MESSAGES.VIDEO_ID_REQUIRED),
+  body("title")
+    .trim()
+    .notEmpty()
+    .withMessage(ERROR_MESSAGES.VIDEO_TITLE_REQUIRED)
+    .isLength({ min: 2, max: 150 })
+    .withMessage(ERROR_MESSAGES.VIDEO_TITLE_LENGTH_INVALID),
+  body("description")
+    .optional()
+    .isString()
+    .isLength({ max: 2500 })
+    .withMessage("Video description cannot exceed 2500 characters"),
+  body("thumbnailId").trim().notEmpty().withMessage("Video thumbnail ID is required"),
+  body("thumbnailUrl").trim().notEmpty().withMessage("Video thumbnail URL is required"),
+  ValidateRequestParametersMiddleware,
+  updateVideoDetailsController,
 );
 
 videoUploadRoutes.put(

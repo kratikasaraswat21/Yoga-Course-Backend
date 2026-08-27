@@ -170,6 +170,29 @@ export const fetchVideoDetailsService = async (video_id) => {
   });
 };
 
+export const updateVideoDetailsService = async (videoId, { title, description, thumbnailId, thumbnailUrl }) => {
+  const video = await prisma.courseVideo.findUnique({
+    where: { id: videoId },
+    select: { id: true },
+  });
+
+  if (!video) {
+    const error = new Error(ERROR_MESSAGES.VIDEO_NOT_FOUND);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return prisma.courseVideo.update({
+    where: { id: videoId },
+    data: {
+      title,
+      description,
+      thumbnailId,
+      thumbnailUrl,
+    },
+  });
+};
+
 export const deleteYogaCourseVideoService = async (video_id) => {
   return await prisma.courseVideo.delete({
     where: {
