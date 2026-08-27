@@ -89,6 +89,7 @@ export const GetPasswordResetTokenService = async (rawToken) => {
   return prisma.passwordResetToken.findUnique({
     where: {
       tokenHash,
+      user: { role: "ADMIN" },
     },
     include: {
       user: true,

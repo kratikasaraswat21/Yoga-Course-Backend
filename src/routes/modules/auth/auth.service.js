@@ -7,7 +7,7 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 //? SERVICE 1: Retrieve User Account by Email
 //
 export const GetUserByEmailService = async (email) => {
-  const user = await prisma.user.findUnique({ where: { email: email } });
+  const user = await prisma.user.findUnique({ where: { email: email, role: "USER" } });
 
   return user;
 };
@@ -17,7 +17,7 @@ export const GetUserByEmailService = async (email) => {
 //
 export const GetUserInfoById = async (user_id) => {
   const user = await prisma.user.findFirst({
-    where: { id: user_id },
+    where: { id: user_id, role: "USER" },
     omit: { password: true },
   });
 
@@ -33,6 +33,7 @@ export const CreateUserService = async (data) => {
       name: data.name,
       email: data.email,
       password: data.passwordHash,
+      role: "USER",
     },
   });
 };
@@ -122,8 +123,11 @@ export const CreatePasswordResetTokenService = async (userId) => {
 export const GetPasswordResetTokenService = async (rawToken) => {
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
 
-  return prisma.passwordResetToken.findUnique({
-    where: { tokenHash },
+  return prisma.passwordResetToken.findFirst({
+    where: {
+      tokenHash,
+      user: { role: "USER" },
+    },
     include: { user: true },
   });
 };

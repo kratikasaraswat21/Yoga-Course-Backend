@@ -27,7 +27,22 @@ const razorpayRequest = async (path, options = {}) => {
   return data;
 };
 
+const ensurePurchasingUser = async (userId) => {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, role: "USER" },
+    select: { id: true },
+  });
+
+  if (!user) {
+    const error = new Error("Only users can make purchases");
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
 export const createCourseOrderService = async ({ userId, courseId }) => {
+  await ensurePurchasingUser(userId);
+
   const course = await prisma.yogaCourse.findFirst({
     where: { id: courseId, status: CourseStatus.PUBLISHED },
     select: { id: true, title: true, totalPayableAmount: true },
@@ -77,6 +92,8 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
 };
 
 export const createPdfCourseOrderService = async ({ userId, pdfCourseId }) => {
+  await ensurePurchasingUser(userId);
+
   const course = await prisma.pdfCourseResource.findFirst({
     where: { id: pdfCourseId, status: CourseStatus.PUBLISHED },
     select: { id: true, title: true, totalPayableAmount: true, isAvailableForFree: true },
@@ -137,6 +154,8 @@ export const createPdfCourseOrderService = async ({ userId, pdfCourseId }) => {
 };
 
 export const verifyCoursePaymentService = async ({ userId, razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
+  await ensurePurchasingUser(userId);
+
   if (!EnvConfig.RAZORPAY_KEY_SECRET) {
     const error = new Error("Razorpay configuration is missing");
     error.statusCode = 500;
@@ -173,10 +192,17 @@ export const processRazorpayWebhookService = async ({ eventId, eventType, orderI
     const existingEvent = await transaction.razorpayWebhookEvent.findUnique({ where: { eventId } });
     if (existingEvent) return { duplicate: true, processed: true };
 
-    const order = await transaction.order.findUnique({ where: { razorpayOrderId: orderId } });
+    const order = await transaction.order.findUnique({
+      where: { razorpayOrderId: orderId },
+      include: { user: { select: { role: true } } },
+    });
     if (!order) {
       await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
       return { duplicate: false, processed: false, reason: "order_not_found" };
+    }
+
+    if (order.user.role !== "USER") {
+      throw new Error("Only users can make purchases");
     }
 
     if (amount !== undefined && Number(amount) !== Math.round(Number(order.amount) * 100)) {
