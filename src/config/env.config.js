@@ -11,7 +11,9 @@ export const EnvConfig = {
   AUTH_EMAIL_ENCRYPTION_SECRET: process.env.AUTH_EMAIL_ENCRYPTION_SECRET,
   OTP_EXPIRES_MINUTES: parseInt(process.env.OTP_EXPIRES_MINUTES ?? "10", 10),
   PASSWORD_RESET_EXPIRES_MINUTES: parseInt(process.env.PASSWORD_RESET_EXPIRES_MINUTES ?? "15", 10),
-  PASSWORD_RESET_URL: process.env.PASSWORD_RESET_URL ?? "http://localhost:3000/reset-password",
+  USER_PASSWORD_RESET_URL: process.env.USER_PASSWORD_RESET_URL ?? "https://kratikayoga.com/reset-password",
+
+  ADMIN_PASSWORD_RESET_URL: process.env.ADMIN_PASSWORD_RESET_URL ?? "https://admin.kratikayoga.com/reset-password",
 
   EMAIL_SMTP_HOST: process.env.EMAIL_SMTP_HOST,
   EMAIL_SMTP_PORT: process.env.EMAIL_SMTP_PORT,

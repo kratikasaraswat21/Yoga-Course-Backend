@@ -109,7 +109,7 @@ export const AdminForgotPasswordController = asyncHandler(async (req, res) => {
 
   const { rawToken } = await CreatePasswordResetTokenService(admin_info.id);
 
-  const resetUrl = `${EnvConfig.PASSWORD_RESET_URL}?token=${encodeURIComponent(rawToken)}`;
+  const resetUrl = `${EnvConfig.ADMIN_PASSWORD_RESET_URL}?token=${encodeURIComponent(rawToken)}`;
 
   SendEmailNotificationService(EnvConfig.PLATFORM_OWNER_MAIL, "EMAIL_PASSWORD_RESET", {
     name: EnvConfig.PLATFORM_OWNER_NAME,
