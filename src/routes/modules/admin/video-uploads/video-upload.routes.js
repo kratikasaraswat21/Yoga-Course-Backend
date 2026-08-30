@@ -13,7 +13,7 @@ import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 
 const videoUploadRoutes = Router();
 
-const MAX_VIDEO_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB
+const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024 * 1024; // 50 GB
 
 const MAX_VIDEO_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
 

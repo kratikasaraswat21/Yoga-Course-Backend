@@ -45,7 +45,7 @@ export const ERROR_MESSAGES = {
   VIDEO_FILE_TYPE_REQUIRED: "Video file type is required",
   VIDEO_FILE_TYPE_INVALID: "Only MP4, WebM and QuickTime videos are supported",
   VIDEO_FILE_SIZE_REQUIRED: "Video file size is required",
-  VIDEO_FILE_SIZE_INVALID: "Video file size must be between 1 byte and 5 GB",
+  VIDEO_FILE_SIZE_INVALID: "Video file size must be between 1 byte and 50 GB",
   VIDEO_MAX_DURATION_REQUIRED: "Video maximum duration is required",
   VIDEO_MAX_DURATION_INVALID: (maxDuration) => `Video maximum duration must be between 1 and ${maxDuration} seconds`,
   VIDEO_THUMBNAIL_TYPE_REQUIRED: "Thumbnail type is required",
