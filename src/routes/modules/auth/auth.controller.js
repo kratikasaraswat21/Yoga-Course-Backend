@@ -262,6 +262,13 @@ export const VerifyUserLoginStatusController = asyncHandler(async (req, res) => 
 
   const data = await GetUserInfoById(user_id);
 
+  if (!data) {
+    return res.status(404).json({
+      message: ERROR_MESSAGES.USER_NOT_FOUND,
+      success: false,
+    });
+  }
+
   return res.status(200).json({
     message: SUCCESS_MESSAGES.USER_VERIFIED_SUCCESSFULLY,
     success: true,

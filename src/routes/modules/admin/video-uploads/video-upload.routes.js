@@ -84,6 +84,7 @@ videoUploadRoutes.post(
 );
 videoUploadRoutes.get(
   "/fetch",
+  AdminValidateMiddleware,
   query("courseId").notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
   ValidateRequestParametersMiddleware,
   fetchYogaCourseVideosController,
