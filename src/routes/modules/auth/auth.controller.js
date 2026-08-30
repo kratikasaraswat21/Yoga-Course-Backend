@@ -79,7 +79,7 @@ export const AuthLoginController = asyncHandler(async (req, res) => {
   }
 
   const jwt_token = jwt.sign({ id: findUser.id, email: findUser.email }, EnvConfig.JWT_SECRET, {
-    expiresIn: EnvConfig.JWT_EXPIRES_IN,
+    expiresIn: EnvConfig.USER_JWT_EXPIRES_IN,
   });
 
   return res.status(200).json({
@@ -134,7 +134,7 @@ export const AuthVerifyOtpController = asyncHandler(async (req, res) => {
   await VerifyUserEmailService(user.id, verificationToken.id);
 
   const jwtToken = jwt.sign({ id: user.id, email: user.email }, EnvConfig.JWT_SECRET, {
-    expiresIn: EnvConfig.JWT_EXPIRES_IN,
+    expiresIn: EnvConfig.USER_JWT_EXPIRES_IN,
   });
 
   return res.status(200).json({
