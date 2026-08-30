@@ -186,7 +186,7 @@ export const AdminAuthVerifyOtpController = asyncHandler(async (req, res) => {
   await VerifyUserEmailService(admin_info.id, verificationToken.id);
 
   const jwtToken = jwt.sign({ id: admin_info.id, email: admin_info.email }, EnvConfig.JWT_SECRET, {
-    expiresIn: EnvConfig.JWT_EXPIRES_IN,
+    expiresIn: EnvConfig.ADMIN_JWT_EXPIRES_IN,
   });
 
   return res.status(200).json({
