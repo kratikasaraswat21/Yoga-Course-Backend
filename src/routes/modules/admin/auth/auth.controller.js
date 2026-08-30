@@ -78,7 +78,7 @@ export const VerifyAdminLoginStatusController = asyncHandler(async (req, res) =>
   const data = await GetAdminInfoById(user_id);
 
   if (!data) {
-    return res.status(400).json({
+    return res.status(404).json({
       message: ERROR_MESSAGES.USER_NOT_FOUND,
       success: false,
     });

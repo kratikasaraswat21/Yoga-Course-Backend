@@ -1,5 +1,6 @@
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
+import { prisma } from "#src/lib/prisma.js";
 import jwt from "jsonwebtoken";
 
 export const ValidateJWTToken = asyncHandler(async (req, res, next) => {
@@ -8,17 +9,24 @@ export const ValidateJWTToken = asyncHandler(async (req, res, next) => {
 
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (!token) {
-    return res.status(401).json({ success: false, message: ERROR_MESSAGES.ACCESS_DENIED });
-  }
+  if (!token) return res.status(404).json({ success: false, message: ERROR_MESSAGES.ACCESS_DENIED });
 
+  let verifiedData;
   try {
-    const verifiedData = jwt.verify(token, process.env.JWT_SECRET);
-
-    req.user = verifiedData;
-
-    next();
+    verifiedData = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
-    return res.status(403).json({ message: ERROR_MESSAGES.INVALID_TOKEN, success: false });
+    return res.status(404).json({ message: ERROR_MESSAGES.INVALID_TOKEN, success: false });
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: verifiedData.id },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: ERROR_MESSAGES.USER_NOT_FOUND });
+  }
+
+  req.user = verifiedData;
+  next();
 });
