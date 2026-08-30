@@ -47,7 +47,7 @@ export const ERROR_MESSAGES = {
   VIDEO_FILE_SIZE_REQUIRED: "Video file size is required",
   VIDEO_FILE_SIZE_INVALID: "Video file size must be between 1 byte and 50 GB",
   VIDEO_MAX_DURATION_REQUIRED: "Video maximum duration is required",
-  VIDEO_MAX_DURATION_INVALID: (maxDuration) => `Video maximum duration must be between 1 and ${maxDuration} seconds`,
+  VIDEO_MAX_DURATION_INVALID: "Video duration must be at least 1 second",
   VIDEO_THUMBNAIL_TYPE_REQUIRED: "Thumbnail type is required",
   ORDERED_VIDEO_IDS_REQUIRED: "orderedIds must be a non-empty array.",
   ORDERED_VIDEO_IDS_INVALID: "orderedIds must contain valid video IDs.",

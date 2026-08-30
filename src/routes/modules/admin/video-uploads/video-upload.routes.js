@@ -15,8 +15,6 @@ const videoUploadRoutes = Router();
 
 const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024 * 1024; // 50 GB
 
-const MAX_VIDEO_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
-
 videoUploadRoutes.post(
   "/upload-url",
 
@@ -71,11 +69,8 @@ videoUploadRoutes.post(
   body("maxDurationSeconds")
     .notEmpty()
     .withMessage(ERROR_MESSAGES.VIDEO_MAX_DURATION_REQUIRED)
-    .isFloat({
-      min: 1,
-      max: MAX_VIDEO_DURATION_SECONDS,
-    })
-    .withMessage(ERROR_MESSAGES.VIDEO_MAX_DURATION_INVALID(MAX_VIDEO_DURATION_SECONDS))
+    .isFloat({ min: 1 })
+    .withMessage(ERROR_MESSAGES.VIDEO_MAX_DURATION_INVALID)
     .toInt(),
 
   body("thumbnailType").notEmpty().withMessage(ERROR_MESSAGES.VIDEO_THUMBNAIL_TYPE_REQUIRED),
