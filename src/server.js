@@ -23,9 +23,9 @@ const startServer = async () => {
       console.log(`Server Started On Port ${EnvConfig.PORT}`);
     });
 
-    VerifyEmailTransportConnectionService();
+    await VerifyEmailTransportConnectionService();
   } catch (error) {
-    console.error("Admin seed failed:", error);
+    console.error("Server startup failed:", error);
     await prisma.$disconnect();
     process.exit(1);
   }

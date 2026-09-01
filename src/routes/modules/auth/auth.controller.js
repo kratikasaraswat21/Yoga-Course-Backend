@@ -172,7 +172,10 @@ export const AuthResendOtpController = asyncHandler(async (req, res) => {
 
   const verification = await CreateEmailVerificationTokenService(user.id);
 
-  SendEmailNotificationService(user.email, "EMAIL_OTP_VERIFICATION", { otp: verification.otp, name: user.name });
+  const errrrres = await SendEmailNotificationService(user.email, "EMAIL_OTP_VERIFICATION", {
+    otp: verification.otp,
+    name: user.name,
+  });
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.OTP_SENT_SUCCESSFULLY,
@@ -180,6 +183,7 @@ export const AuthResendOtpController = asyncHandler(async (req, res) => {
     data: {
       requires_email_verification: true,
       email: encryptEmail(user.email),
+      errrrres: errrrres,
     },
   });
 });
@@ -274,6 +278,8 @@ export const VerifyUserLoginStatusController = asyncHandler(async (req, res) => 
     success: true,
     data: {
       user_info: data,
+      is_email_verified: Boolean(data.emailVerifiedAt),
+      ...(data.emailVerifiedAt ? {} : { email: encryptEmail(data.email) }),
     },
   });
 });
