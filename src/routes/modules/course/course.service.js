@@ -114,7 +114,12 @@ const getLandingPageCourses = async () => {
       thumbnailUrl: true,
       createdAt: true,
       courseVideos: {
-        select: { durationSeconds: true },
+        select: {
+          durationSeconds: true,
+          ratings: {
+            select: { rating: true },
+          },
+        },
       },
       reviews: {
         select: { rating: true },
@@ -135,9 +140,14 @@ const getLandingPageCourses = async () => {
         (total, video) => total + (Number(video.durationSeconds) || 0),
         0,
       );
-      const rating = reviews.length
+      const courseRating = reviews.length
         ? Number((reviews.reduce((total, review) => total + Number(review.rating), 0) / reviews.length).toFixed(2))
         : 0;
+      const videoRatings = courseVideos.flatMap((video) => video.ratings);
+      const videoRating = videoRatings.length
+        ? Number((videoRatings.reduce((total, video) => total + Number(video.rating), 0) / videoRatings.length).toFixed(2))
+        : 0;
+      const rating = courseRating || videoRating;
 
       return {
         courseId: course.id,
