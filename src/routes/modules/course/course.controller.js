@@ -8,6 +8,8 @@ import {
   getTopRatedLandingCoursesService,
   getAllLandingCoursesService,
   getLandingPageReviewsService,
+  getCourseLandingSlugsService,
+  getCourseLandingBySlugService,
 } from "#src/routes/modules/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { createCourseReviewService, createCourseVideoRatingService } from "#src/routes/modules/course/course-review.service.js";
@@ -128,5 +130,25 @@ export const getOtherCourseVideosController = asyncHandler(async (req, res) => {
     data: {
       course,
     },
+  });
+});
+
+export const getCourseLandingSlugsController = asyncHandler(async (req, res) => {
+  const courses = await getCourseLandingSlugsService();
+
+  return res.status(200).json({
+    success: true,
+    message: "Course landing pages fetched successfully",
+    data: { courses },
+  });
+});
+
+export const getCourseLandingBySlugController = asyncHandler(async (req, res) => {
+  const landingPage = await getCourseLandingBySlugService(req.params.slug);
+
+  return res.status(200).json({
+    success: true,
+    message: "Course landing page fetched successfully",
+    data: landingPage,
   });
 });

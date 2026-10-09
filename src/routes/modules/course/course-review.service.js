@@ -1,5 +1,8 @@
 import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
+import { LandingTags, revalidateLandingTags } from "#src/utils/landing-revalidate.util.js";
+import { createVideoLockedError, isVideoReleased } from "#src/utils/video-visibility.util.js";
+import { ensureVideoUnlockedInOrder } from "#src/utils/sequential-lock.util.js";
 
 const activeEnrollmentWhere = (userId, courseId) => ({
   userId,
@@ -44,10 +47,13 @@ export const createCourseReviewService = async ({ userId, courseId, rating, comm
     throw error;
   }
 
-  return prisma.courseReview.create({
+  const review = await prisma.courseReview.create({
     data: { userId, courseId, rating: validateRating(rating), comment: comment?.trim() || null },
     select: { id: true, courseId: true, rating: true, comment: true, createdAt: true },
   });
+
+  revalidateLandingTags([LandingTags.REVIEWS, LandingTags.COURSES, LandingTags.course(courseId)]);
+  return review;
 };
 
 export const createCourseVideoRatingService = async ({ userId, courseId, videoId, rating }) => {
@@ -55,13 +61,16 @@ export const createCourseVideoRatingService = async ({ userId, courseId, videoId
 
   const video = await prisma.courseVideo.findFirst({
     where: { id: videoId, yogaCourseId: courseId, yogaCourse: { status: CourseStatus.PUBLISHED } },
-    select: { id: true },
+    select: { id: true, releaseAt: true },
   });
   if (!video) {
     const error = new Error("Video not found");
     error.statusCode = 404;
     throw error;
   }
+  if (!isVideoReleased(video)) throw createVideoLockedError(video.releaseAt);
+  // With "Lock videos in order", a video can't be completed or rated before the buyer reaches it.
+  await ensureVideoUnlockedInOrder({ userId, courseId, videoId });
 
   const existingRating = await prisma.courseVideoRating.findUnique({ where: { userId_videoId: { userId, videoId } } });
   if (existingRating) {

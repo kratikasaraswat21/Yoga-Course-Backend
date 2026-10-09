@@ -3,6 +3,7 @@ import { VerifyEmailTransportConnectionService } from "#src/email/email.service.
 import app from "#src/index.js";
 import { prisma } from "#src/lib/prisma.js";
 import { AdminSeedFunction } from "#src/lib/seed-script.js";
+import { scheduleDailyMidnightJob } from "#src/jobs/daily-midnight.job.js";
 
 let server;
 
@@ -22,6 +23,8 @@ const startServer = async () => {
     server = app.listen(EnvConfig.PORT, () => {
       console.log(`Server Started On Port ${EnvConfig.PORT}`);
     });
+
+    scheduleDailyMidnightJob();
 
     await VerifyEmailTransportConnectionService();
   } catch (error) {

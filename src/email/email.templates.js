@@ -33,7 +33,82 @@ export const GetEmailTemplate = async (templateName, data) => {
 
     case "EMAIL_COURSE_ACCESS_RESTORED":
       return await CourseAccessRestoredTemplate(data);
+
+    case "EMAIL_COURSE_PURCHASED":
+      return await CoursePurchasedTemplate(data);
+
+    case "EMAIL_COURSE_PURCHASED_PRELAUNCH":
+      return await CoursePurchasedPrelaunchTemplate(data);
+
+    case "EMAIL_COURSE_LIVE":
+      return await CourseLiveTemplate(data);
   }
+};
+
+// Values in the purchase and course-live emails come from users and admins, so they are escaped.
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const escapeAll = (variables) =>
+  Object.fromEntries(Object.entries(variables).map(([key, value]) => [key, escapeHtml(value)]));
+
+const LOCK_NOTE = "Videos unlock in order: each one opens when you complete the one before it.";
+
+const purchaseReceiptVariables = (data) => ({
+  USER_NAME: data.name,
+  COURSE_TITLE: data.courseTitle,
+  AMOUNT_PAID: data.amountPaid,
+  ORIGINAL_PRICE: data.originalPrice,
+  SAVINGS_TEXT: data.discountPercent > 0 ? `You saved ${data.discountPercent}%` : "",
+  ORDER_ID: data.orderId,
+  PURCHASE_DATE: data.purchaseDate,
+  COURSE_URL: data.courseUrl,
+  LOCK_NOTE: data.sequentialUnlock ? LOCK_NOTE : "",
+});
+
+const CoursePurchasedTemplate = async (data) => {
+  const subject = `You're enrolled in ${data.courseTitle}`;
+  const html = await RenderEmailTemplate("course_purchase_confirmation.html", escapeAll(purchaseReceiptVariables(data)));
+
+  return { subject, html };
+};
+
+const CoursePurchasedPrelaunchTemplate = async (data) => {
+  const subject = `You're in! Your prelaunch seat for ${data.courseTitle} is confirmed`;
+  const html = await RenderEmailTemplate(
+    "course_purchase_prelaunch.html",
+    escapeAll({
+      ...purchaseReceiptVariables(data),
+      SAVINGS_TEXT: `Prelaunch price: ${data.discountPercent}% off`,
+      LIVE_STATUS_TEXT: data.isLive
+        ? "Your course is already live. Start your first class now."
+        : data.courseLiveDate
+          ? `Your course goes live on ${data.courseLiveDate}. We'll email you the moment it does.`
+          : "We'll email you the moment your course goes live.",
+    }),
+  );
+
+  return { subject, html };
+};
+
+const CourseLiveTemplate = async (data) => {
+  const subject = `${data.courseTitle} is live. Your first class is ready`;
+  const html = await RenderEmailTemplate(
+    "course_live.html",
+    escapeAll({
+      USER_NAME: data.name,
+      COURSE_TITLE: data.courseTitle,
+      FIRST_VIDEO_TITLE: data.firstVideoTitle,
+      COURSE_URL: data.courseUrl,
+    }),
+  );
+
+  return { subject, html };
 };
 
 const CourseAccessRevokedTemplate = async (data) => {

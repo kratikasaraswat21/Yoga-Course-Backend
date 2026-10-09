@@ -9,11 +9,19 @@ import {
   reorderCourseVideosService,
   updateVideoDetailsService,
   updateVideoObjectWithCloudflareMetadata,
+  resolveVideoReleaseAt,
+  formatAdminVideo,
+  fetchCourseVideoGroupsService,
+  createCourseVideoGroupService,
+  updateCourseVideoGroupService,
+  deleteCourseVideoGroupService,
+  setGroupReleaseDateService,
 } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { encodeMetadata } from "#src/utils/helper.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
+import { revalidateCoursePages } from "#src/utils/landing-revalidate.util.js";
 
 export const CreateCloudflareVideoUploadUrlController = asyncHandler(async (req, res) => {
   const title = req?.body?.title;
@@ -26,6 +34,7 @@ export const CreateCloudflareVideoUploadUrlController = asyncHandler(async (req,
   const thumbnailType = req?.body?.thumbnailType;
   const thumbnailUrl = req?.body?.thumbnailUrl;
   const thumbnailId = req?.body?.thumbnailId;
+  const releaseAt = resolveVideoReleaseAt(req?.body?.releaseDate);
 
   if (!["automatic", "custom"].includes(thumbnailType)) {
     return res.status(400).json({
@@ -46,6 +55,8 @@ export const CreateCloudflareVideoUploadUrlController = asyncHandler(async (req,
     yogaCourseId: courseId,
     thumbnailUrl: thumbnailUrl ?? "",
     thumbnailId: thumbnailId ?? "",
+    releaseAt,
+    groupId: req?.body?.groupId || undefined,
   });
 
   if (!EnvConfig.CLOUDFLARE_ACCOUNT_ID || !EnvConfig.CLOUDFLARE_STREAM_API_TOKEN) {
@@ -91,8 +102,8 @@ export const fetchYogaCourseVideosController = asyncHandler(async (req, res) => 
 });
 
 export const reorderCourseVideosController = asyncHandler(async (req, res) => {
-  const { courseId, videoId, orderedIds } = req.body ?? {};
-  const videos = await reorderCourseVideosService({ courseId, videoId, orderedIds });
+  const { courseId, videoId, orderedIds, layout } = req.body ?? {};
+  const videos = await reorderCourseVideosService({ courseId, videoId, orderedIds, layout });
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.COURSE_VIDEOS_REORDERED_SUCCESSFULLY,
@@ -104,23 +115,22 @@ export const reorderCourseVideosController = asyncHandler(async (req, res) => {
 });
 
 export const updateVideoDetailsController = asyncHandler(async (req, res) => {
-  const { videoId, title, description, thumbnailId, thumbnailUrl } = req.body;
+  const { videoId, title, description, thumbnailId, thumbnailUrl, releaseDate, groupId } = req.body;
 
   const video = await updateVideoDetailsService(videoId, {
     title,
     description,
     thumbnailId,
     thumbnailUrl,
+    releaseDate,
+    groupId,
   });
 
   return res.status(200).json({
     message: SUCCESS_MESSAGES.VIDEO_DETAILS_UPDATED_SUCCESSFULLY,
     success: true,
     data: {
-      video: {
-        ...video,
-        fileSize: video.fileSize.toString(),
-      },
+      video: formatAdminVideo(video),
     },
   });
 });
@@ -139,6 +149,7 @@ export const deleteVideoFromCloudflare = asyncHandler(async (req, res) => {
   await deleteYogaCourseVideoFromCloudFlair(video.cloudflareVideoUid);
 
   await deleteYogaCourseVideoService(video.id);
+  revalidateCoursePages(video.yogaCourseId);
 
   return res.status(200).json({
     success: true,
@@ -148,4 +159,36 @@ export const deleteVideoFromCloudflare = asyncHandler(async (req, res) => {
       deleted: true,
     },
   });
+});
+
+export const fetchCourseVideoGroupsController = asyncHandler(async (req, res) => {
+  const groups = await fetchCourseVideoGroupsService(req.query.courseId);
+  return res.status(200).json({ success: true, message: "Video groups fetched successfully", data: { groups } });
+});
+
+export const createCourseVideoGroupController = asyncHandler(async (req, res) => {
+  const group = await createCourseVideoGroupService({
+    courseId: req.body.courseId,
+    title: req.body.title,
+    description: req.body.description,
+  });
+  return res.status(201).json({ success: true, message: "Group created successfully", data: { group } });
+});
+
+export const updateCourseVideoGroupController = asyncHandler(async (req, res) => {
+  const group = await updateCourseVideoGroupService(req.params.groupId, {
+    title: req.body.title,
+    description: req.body.description,
+  });
+  return res.status(200).json({ success: true, message: "Group updated successfully", data: { group } });
+});
+
+export const deleteCourseVideoGroupController = asyncHandler(async (req, res) => {
+  const result = await deleteCourseVideoGroupService(req.params.groupId);
+  return res.status(200).json({ success: true, message: "Group deleted. Its videos are now ungrouped.", data: result });
+});
+
+export const setGroupReleaseDateController = asyncHandler(async (req, res) => {
+  const result = await setGroupReleaseDateService(req.params.groupId, req.body.releaseDate);
+  return res.status(200).json({ success: true, message: "Release date applied to every video in the group", data: result });
 });

@@ -1,5 +1,7 @@
 import { CourseStatus } from "#src/lib/enum.js";
 import { prisma } from "#src/lib/prisma.js";
+import { createVideoLockedError, isVideoReleased } from "#src/utils/video-visibility.util.js";
+import { ensureVideoUnlockedInOrder } from "#src/utils/sequential-lock.util.js";
 
 const activeEnrollmentWhere = (userId, courseId) => ({
   userId,
@@ -24,13 +26,16 @@ export const completeCourseVideoService = async ({ userId, courseId, videoId }) 
       readyToStream: true,
       yogaCourse: { status: CourseStatus.PUBLISHED },
     },
-    select: { id: true },
+    select: { id: true, releaseAt: true },
   });
   if (!video) {
     const error = new Error("Video not found or not ready");
     error.statusCode = 404;
     throw error;
   }
+  if (!isVideoReleased(video)) throw createVideoLockedError(video.releaseAt);
+  // With "Lock videos in order", a video can't be completed or rated before the buyer reaches it.
+  await ensureVideoUnlockedInOrder({ userId, courseId, videoId });
 
   const existingCompletion = await prisma.courseVideoCompletion.findUnique({
     where: { userId_videoId: { userId, videoId } },

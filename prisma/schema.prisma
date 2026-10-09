@@ -67,6 +67,12 @@ enum TokenPurpose {
   ADMIN_PASSWORD_RESET
 }
 
+enum OfferType {
+  NONE
+  DISCOUNT
+  PRELAUNCH
+}
+
 enum VideoStatus {
   PENDING
   UPLOADING
@@ -196,6 +202,23 @@ model PdfCourseResource {
   @@map("pdf_course_resource")
 }
 
+// Student feedback screenshots (Cloudinary) shown on the home page and course landing pages.
+model InstagramFeedbackImage {
+  id String @id @default(uuid())
+
+  imageUrl String
+  publicId String
+  altText  String?
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@map("instagram_feedback_images")
+}
+
 model AffiliateProducts {
   id String @id @default(uuid())
 
@@ -219,12 +242,25 @@ model AffiliateProducts {
 model YogaCourse {
   id          String       @id @default(uuid())
   title       String
+  slug        String       @unique // public landing page URL: /courses/<slug>
   description String?
   status      CourseStatus @default(DRAFT)
 
   price              Float @default(0)
   discount           Float @default(0)
   totalPayableAmount Float @default(0)
+
+  // Prelaunch offer. Dates are stored as 00:00 IST of the chosen day; the end date is exclusive.
+  prelaunchEnabled       Boolean   @default(false)
+  prelaunchStartAt       DateTime?
+  prelaunchEndAt         DateTime?
+  prelaunchDiscount      Float     @default(0)
+  prelaunchPayableAmount Float     @default(0)
+
+  landingPageEnabled Boolean @default(false)
+
+  // Buyers must complete each video before the next one opens.
+  sequentialUnlock Boolean @default(false)
 
   thumbnailUrl String
   thumbnailId  String
@@ -237,7 +273,37 @@ model YogaCourse {
   enrollments  Enrollment[]
   reviews      CourseReview[]
 
+  landingContent CourseLandingContent?
+  videoGroups    CourseVideoGroup[]
+
+  @@index([prelaunchStartAt])
+  @@index([prelaunchEndAt])
   @@map("yoga_courses")
+}
+
+model CourseLandingContent {
+  id       String     @id @default(uuid())
+  courseId String     @unique
+  course   YogaCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Every editable section and text of the public page (see src/utils/course-landing.util.js).
+  content Json @default("{}")
+
+  // Course trailer on Cloudflare Stream. Public (not signed): anyone can watch it on the landing page.
+  trailerVideoUid        String?      @unique
+  trailerStatus          VideoStatus?
+  trailerHlsUrl          String?
+  trailerThumbnailUrl    String? // Cloudflare's automatic thumbnail
+  trailerDurationSeconds Float?
+  trailerFileName        String?
+  // Optional custom thumbnail (Cloudflare Images) shown before the trailer plays.
+  trailerPosterUrl       String?
+  trailerPosterId        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("course_landing_contents")
 }
 
 model Order {
@@ -253,6 +319,9 @@ model Order {
   amount   Decimal     @db.Decimal(10, 2)
   currency String      @default("INR")
   status   OrderStatus @default(CREATED)
+
+  offerType       OfferType @default(NONE)
+  discountPercent Float     @default(0)
 
   razorpayOrderId String @unique
 
@@ -316,6 +385,13 @@ model Enrollment {
   revokedAt    DateTime?
   revokeReason String?
 
+  isPrelaunchPurchase Boolean @default(false)
+
+  // Set when the purchase confirmation / "course is live" email has been sent (claimed before sending,
+  // so it is sent once). The daily job retries a purchase email that is still null.
+  purchaseEmailSentAt DateTime?
+  liveEmailSentAt     DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -357,6 +433,13 @@ model CourseVideo {
 
   sortOrder Int @default(0)
 
+  // null = visible as soon as the video is READY. Otherwise 00:00 IST of the release day.
+  releaseAt DateTime?
+
+  // Optional week/group, e.g. "Week 1". null = not in any group.
+  groupId String?
+  group   CourseVideoGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
   yogaCourseId String
 
   yogaCourse  YogaCourse              @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
@@ -368,7 +451,29 @@ model CourseVideo {
 
   @@index([yogaCourseId])
   @@index([yogaCourseId, sortOrder])
+  @@index([yogaCourseId, releaseAt])
+  @@index([releaseAt])
+  @@index([groupId])
   @@map("course_videos")
+}
+
+// Groups a course's videos, e.g. "Week 1: Foundations". Deleting a group never deletes its videos.
+model CourseVideoGroup {
+  id           String     @id @default(uuid())
+  yogaCourseId String
+  yogaCourse   YogaCourse @relation(fields: [yogaCourseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  sortOrder   Int     @default(0)
+
+  videos CourseVideo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([yogaCourseId, sortOrder])
+  @@map("course_video_groups")
 }
 
 model CourseReview {

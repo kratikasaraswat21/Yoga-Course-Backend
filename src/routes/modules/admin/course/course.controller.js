@@ -11,11 +11,35 @@ import {
   publishYogaCourseService,
   updateYogaCourseDetailsService,
   deleteYogaCourseService,
+  getCourseLandingContentService,
+  updateCourseLandingContentService,
+  createCourseTrailerUploadService,
+  deleteCourseTrailerService,
   revokeCourseAccessService,
   restoreCourseAccessService,
 } from "#src/routes/modules/admin/course/course.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
+import { calculatePayableAmount } from "#src/utils/course-pricing.util.js";
 import { SUCCESS_MESSAGES } from "#src/utils/success.message.js";
+
+const readBoolean = (value) => value === true || value === "true";
+
+// Prelaunch fields are optional; when `prelaunchEnabled` is missing they are left unchanged.
+const readPrelaunchInput = (body) =>
+  body?.prelaunchEnabled === undefined
+    ? undefined
+    : {
+        enabled: readBoolean(body.prelaunchEnabled),
+        startDate: body.prelaunchStartDate,
+        endDate: body.prelaunchEndDate,
+        discount: body.prelaunchDiscount,
+      };
+
+// Optional; when it is missing the course keeps its current setting.
+const readSequentialUnlockInput = (body) =>
+  body?.sequentialUnlock === undefined ? undefined : readBoolean(body.sequentialUnlock);
+
+const readSlugInput = (body) => (typeof body?.slug === "string" && body.slug.trim() ? body.slug.trim() : undefined);
 
 export const generateCourseThumbnailUploadURL = asyncHandler(async (req, res) => {
   const { fileName, fileType } = req.body;
@@ -80,16 +104,19 @@ export const addCourseDataForStepOne = asyncHandler(async (req, res) => {
 
   const coursePrice = Number(price);
   const courseDiscountPercentage = Number(discountPercentage);
-  const discountedPrice = coursePrice - (coursePrice * courseDiscountPercentage) / 100;
-
-  const totalPayableAmount = roundPayableAmount ? Math.round(discountedPrice) : Number(discountedPrice.toFixed(2));
+  const shouldRoundPayableAmount = readBoolean(roundPayableAmount);
+  const totalPayableAmount = calculatePayableAmount(coursePrice, courseDiscountPercentage, shouldRoundPayableAmount);
 
   const courseObject = await addYogaCourseForStepOne({
     title,
+    slug: readSlugInput(req.body),
     description,
     price: coursePrice,
     discount: courseDiscountPercentage,
     totalPayableAmount: totalPayableAmount,
+    roundPayableAmount: shouldRoundPayableAmount,
+    prelaunch: readPrelaunchInput(req.body),
+    sequentialUnlock: readSequentialUnlockInput(req.body),
     thumbnailId,
     thumbnailUrl,
   });
@@ -99,6 +126,7 @@ export const addCourseDataForStepOne = asyncHandler(async (req, res) => {
     message: SUCCESS_MESSAGES.COURSE_STEP_ONE_SAVED_SUCCESSFULLY,
     data: {
       course_id: courseObject.id,
+      slug: courseObject.slug,
     },
   });
 });
@@ -116,16 +144,19 @@ export const editCourseDetailsController = asyncHandler(async (req, res) => {
   const status = req?.body?.status ?? CourseStatus.DRAFT;
   const coursePrice = Number(price);
   const courseDiscountPercentage = Number(discountPercentage);
-  const discountedPrice = coursePrice - (coursePrice * courseDiscountPercentage) / 100;
-
-  const totalPayableAmount = roundPayableAmount ? Math.round(discountedPrice) : Number(discountedPrice.toFixed(2));
+  const shouldRoundPayableAmount = readBoolean(roundPayableAmount);
+  const totalPayableAmount = calculatePayableAmount(coursePrice, courseDiscountPercentage, shouldRoundPayableAmount);
 
   const courseObject = await updateYogaCourseDetailsService(courseId, {
     title,
+    slug: readSlugInput(req.body),
     description,
     price: coursePrice,
     discount: courseDiscountPercentage,
     totalPayableAmount: totalPayableAmount,
+    roundPayableAmount: shouldRoundPayableAmount,
+    prelaunch: readPrelaunchInput(req.body),
+    sequentialUnlock: readSequentialUnlockInput(req.body),
     thumbnailId,
     thumbnailUrl,
   });
@@ -135,6 +166,7 @@ export const editCourseDetailsController = asyncHandler(async (req, res) => {
     message: SUCCESS_MESSAGES.COURSE_DETAILS_UPDATED_SUCCESSFULLY,
     data: {
       course_id: courseObject.id,
+      slug: courseObject.slug,
     },
   });
 });
@@ -241,5 +273,51 @@ export const restoreCourseAccessController = asyncHandler(async (req, res) => {
     success: true,
     message: "Course access restored successfully",
     data: { enrollment },
+  });
+});
+
+export const getCourseLandingContentController = asyncHandler(async (req, res) => {
+  const landingPage = await getCourseLandingContentService(req.params.courseId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Course landing page fetched successfully",
+    data: { landingPage },
+  });
+});
+
+export const updateCourseLandingContentController = asyncHandler(async (req, res) => {
+  const landingPage = await updateCourseLandingContentService(req.params.courseId, req.body ?? {});
+
+  return res.status(200).json({
+    success: true,
+    message: "Course landing page saved successfully",
+    data: { landingPage },
+  });
+});
+
+export const createCourseTrailerUploadController = asyncHandler(async (req, res) => {
+  const upload = await createCourseTrailerUploadService({
+    courseId: req.params.courseId,
+    fileName: req.body.fileName,
+    fileType: req.body.fileType,
+    fileSize: req.body.fileSize,
+    maxDurationSeconds: req.body.maxDurationSeconds,
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: "Trailer upload URL created successfully",
+    data: upload,
+  });
+});
+
+export const deleteCourseTrailerController = asyncHandler(async (req, res) => {
+  const result = await deleteCourseTrailerService(req.params.courseId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Trailer deleted successfully",
+    data: result,
   });
 });
