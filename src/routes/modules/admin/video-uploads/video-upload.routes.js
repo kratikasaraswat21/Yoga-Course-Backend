@@ -11,6 +11,7 @@ import {
   updateCourseVideoGroupController,
   deleteCourseVideoGroupController,
   setGroupReleaseDateController,
+  makeCourseLiveNowController,
 } from "#src/routes/modules/admin/video-uploads/video-upload.controller.js";
 import { Router } from "express";
 import { body, param, query } from "express-validator";
@@ -190,6 +191,14 @@ videoUploadRoutes.put(
   releaseDateValidator,
   ValidateRequestParametersMiddleware,
   setGroupReleaseDateController,
+);
+
+videoUploadRoutes.post(
+  "/courses/:courseId/make-live",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
+  ValidateRequestParametersMiddleware,
+  makeCourseLiveNowController,
 );
 
 videoUploadRoutes.delete(

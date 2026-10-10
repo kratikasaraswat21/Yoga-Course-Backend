@@ -257,6 +257,36 @@ export const setGroupReleaseDateService = async (groupId, releaseDate) => {
 };
 
 /**
+ * "Make live now": the first scheduled release (every video sharing the earliest release date of the
+ * READY videos) is moved to now, so the course goes live without waiting for midnight.
+ * Only allowed while the course has READY videos and none of them is released yet.
+ */
+export const makeCourseLiveNowService = async (courseId) => {
+  const now = new Date();
+  const readyVideos = await prisma.courseVideo.findMany({
+    where: { yogaCourseId: courseId, status: "READY", readyToStream: true },
+    select: { releaseAt: true },
+  });
+
+  if (readyVideos.length === 0) throw badRequest("The course needs at least one ready video to go live");
+  if (readyVideos.some((video) => !video.releaseAt || video.releaseAt <= now)) {
+    throw badRequest("This course is already live");
+  }
+
+  const firstReleaseAt = readyVideos
+    .map((video) => video.releaseAt)
+    .sort((first, second) => first - second)[0];
+
+  const { count } = await prisma.courseVideo.updateMany({
+    where: { yogaCourseId: courseId, releaseAt: firstReleaseAt },
+    data: { releaseAt: now },
+  });
+
+  revalidateCoursePages(courseId);
+  return { courseId, releasedVideoCount: count };
+};
+
+/**
  * Saves a full layout in one transaction: group order, each video's group, and one continuous
  * course-wide video order. layout = [{ groupId, videoIds }], with groupId null for ungrouped videos.
  */

@@ -235,7 +235,18 @@ const recordRazorpayPayment = async ({ eventId, eventType, orderId, paymentId, a
       throw new Error("Razorpay webhook amount does not match the order");
     }
 
-    await transaction.order.update({ where: { id: order.id }, data: { status: "PAID" } });
+    // Razorpay sends both payment.captured and order.paid for one payment, with different event ids.
+    // Only the first one marks the order PAID and grants access; the conditional update also makes a
+    // concurrent second event wait for the first and then match nothing, so no second email is sent.
+    const markedPaid = await transaction.order.updateMany({
+      where: { id: order.id, status: { not: "PAID" } },
+      data: { status: "PAID" },
+    });
+    if (markedPaid.count === 0) {
+      await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
+      return { duplicate: true, processed: true };
+    }
+
     await transaction.payment.update({
       where: { orderId: order.id },
       data: { status: "CAPTURED", razorpayPaymentId: paymentId ?? undefined },

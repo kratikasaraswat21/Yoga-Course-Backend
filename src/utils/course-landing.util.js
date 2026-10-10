@@ -16,6 +16,8 @@ const text = (max) => ({ type: "text", max });
 const phase = (max) => ({ type: "phase", max });
 const list = (max, of) => ({ type: "list", max, of });
 const object = (fields) => ({ type: "object", fields });
+// For lists the admin can make as long as they like.
+const NO_LIMIT = Infinity;
 
 export const LANDING_CONTENT_SCHEMA = object({
   announcement: phase(TITLE),
@@ -32,63 +34,73 @@ export const LANDING_CONTENT_SCHEMA = object({
   }),
   // Section under the hero with the course trailer (the video itself is uploaded separately).
   trailerSection: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     text: text(TEXT),
   }),
-  stats: list(6, object({ icon: text(16), title: text(60), text: text(120) })),
+  // Small heading above the stat tiles, e.g. "Course at a glance".
+  statsTitle: text(SHORT),
+  // "Course at a glance" tiles. An uploaded icon (iconUrl, e.g. an SVG) is shown instead of the emoji.
+  stats: list(NO_LIMIT, object({ icon: text(16), iconUrl: text(1000), iconId: text(255), title: text(60), text: text(120) })),
   painPoints: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
-    items: list(6, object({ icon: text(16), title: text(120), text: text(TEXT) })),
+    // Line under the title.
+    text: text(TEXT),
+    // An uploaded icon (iconUrl, e.g. an SVG) is shown instead of the emoji.
+    items: list(NO_LIMIT, object({ icon: text(16), iconUrl: text(1000), iconId: text(255), title: text(120), text: text(TEXT) })),
   }),
   howItWorks: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
-    steps: list(4, object({ title: text(120), text: text(TEXT) })),
+    // Line under the title.
+    text: text(TEXT),
+    steps: list(NO_LIMIT, object({ title: text(120), text: text(TEXT) })),
   }),
   benefits: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     text: text(TEXT),
     items: list(12, text(TITLE)),
   }),
   curriculum: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     text: text(TEXT),
   }),
   pricing: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     // Line under the title, e.g. "One payment, lifetime access. The 50% pre-launch price ends on 11 Oct."
     text: phase(TEXT),
     badge: phase(SHORT),
     stepsTitle: text(SHORT),
     steps: object({ prelaunch: list(5, text(TITLE)), live: list(5, text(TITLE)) }),
-    includes: list(10, text(TITLE)),
     button: text(SHORT),
     // Line under the price, e.g. "One-time payment · lifetime access · no subscription".
     note: text(TITLE),
   }),
   instructor: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     bio: text(LONG),
     imageUrl: text(1000),
     imageId: text(255),
     // Small figures under the bio, e.g. { value: "8 yrs", label: "of practice" }.
     stats: list(4, object({ value: text(20), label: text(60) })),
+    // Small label on the photo, e.g. "Taking new students this month".
+    availability: text(80),
+    // "She teaches" with a few styles as tags, e.g. "Hatha", "Pranayama".
+    teachesLabel: text(SHORT),
+    teaches: list(8, text(60)),
+    quote: object({ text: text(TEXT), author: text(80) }),
+    // Buttons under the quote, each shown only with both a label and a link, plus a short line beside them.
+    primaryButton: object({ label: text(SHORT), url: text(1000) }),
+    secondaryButton: object({ label: text(SHORT), url: text(1000) }),
+    buttonNote: text(SHORT),
   }),
   testimonials: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
     showScreenshots: { type: "bool" },
     quotes: list(6, object({ text: text(TEXT), name: text(80) })),
   }),
   faq: object({
-    eyebrow: text(SHORT),
     title: text(TITLE),
+    // Line under the title, e.g. "A few helpful answers to make your first step feel simple."
+    text: text(TEXT),
     items: list(20, object({ question: text(TITLE), answer: text(LONG) })),
   }),
   finalCta: object({
@@ -97,6 +109,14 @@ export const LANDING_CONTENT_SCHEMA = object({
     button: text(SHORT),
   }),
   mobileBar: object({ subtitle: text(80) }),
+  // Search results and link previews. Empty fields fall back to the course title, intro and cover image.
+  // The image is exactly 1200 × 630 (checked by the admin panel before upload).
+  seo: object({
+    title: text(70),
+    description: text(160),
+    imageUrl: text(1000),
+    imageId: text(255),
+  }),
 });
 
 const badRequest = (message) => {
@@ -104,6 +124,9 @@ const badRequest = (message) => {
   error.statusCode = 400;
   return error;
 };
+
+// Links the admin can use on buttons: web pages, a path or #section on this site, email and phone.
+const SAFE_LINK = /^(https?:\/\/|\/(?!\/)|#|mailto:|tel:)/i;
 
 const isEmptyValue = (value) =>
   value === "" ||
@@ -176,6 +199,19 @@ export const sanitizeLandingContentInput = (input) => {
   content.testimonials.quotes.forEach((quote, index) => {
     if (!quote.text) throw badRequest(`Student quote ${index + 1} needs the quote text`);
   });
+  if (content.instructor.quote.author && !content.instructor.quote.text) {
+    throw badRequest("The instructor quote needs the quote text");
+  }
+  [
+    ["Instructor main button", content.instructor.primaryButton],
+    ["Instructor second button", content.instructor.secondaryButton],
+  ].forEach(([name, button]) => {
+    if (button.label && !button.url) throw badRequest(`${name} needs a link`);
+    if (button.url && !button.label) throw badRequest(`${name} needs a label`);
+    if (button.url && !SAFE_LINK.test(button.url)) {
+      throw badRequest(`${name} link must start with https://, /, #, mailto: or tel:`);
+    }
+  });
   ["stats", "painPoints.items", "howItWorks.steps"].forEach((key) => {
     const items = key.split(".").reduce((value, part) => value[part], content);
     items.forEach((item, index) => {
@@ -184,6 +220,10 @@ export const sanitizeLandingContentInput = (input) => {
   });
   if (!content.hero.coverImageUrl) content.hero.coverImageId = "";
   if (!content.instructor.imageUrl) content.instructor.imageId = "";
+  if (!content.seo.imageUrl) content.seo.imageId = "";
+  [...content.stats, ...content.painPoints.items].forEach((item) => {
+    if (!item.iconUrl) item.iconId = "";
+  });
 
   return content;
 };
@@ -193,4 +233,9 @@ export const formatLandingContent = (stored) => sanitize(LANDING_CONTENT_SCHEMA,
 
 /** Image IDs (Cloudflare Images) referenced by the content, for clean-up when replaced or deleted. */
 export const getLandingContentImageIds = (content) =>
-  [content?.hero?.coverImageId, content?.instructor?.imageId].filter(Boolean);
+  [
+    content?.hero?.coverImageId,
+    content?.instructor?.imageId,
+    content?.seo?.imageId,
+    ...[content?.stats, content?.painPoints?.items].flatMap((items) => (Array.isArray(items) ? items.map((item) => item?.iconId) : [])),
+  ].filter(Boolean);

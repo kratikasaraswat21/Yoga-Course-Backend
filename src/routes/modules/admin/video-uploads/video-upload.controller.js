@@ -16,7 +16,9 @@ import {
   updateCourseVideoGroupService,
   deleteCourseVideoGroupService,
   setGroupReleaseDateService,
+  makeCourseLiveNowService,
 } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
+import { sendCourseLiveEmailsService } from "#src/routes/modules/course/course-notification.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { encodeMetadata } from "#src/utils/helper.js";
@@ -191,4 +193,20 @@ export const deleteCourseVideoGroupController = asyncHandler(async (req, res) =>
 export const setGroupReleaseDateController = asyncHandler(async (req, res) => {
   const result = await setGroupReleaseDateService(req.params.groupId, req.body.releaseDate);
   return res.status(200).json({ success: true, message: "Release date applied to every video in the group", data: result });
+});
+
+export const makeCourseLiveNowController = asyncHandler(async (req, res) => {
+  const result = await makeCourseLiveNowService(req.params.courseId);
+
+  // Same "course is live" emails the daily job sends, for this course only. They can take a while
+  // for many buyers, so they don't hold up the response.
+  sendCourseLiveEmailsService(new Date(), req.params.courseId)
+    .then(({ sent, pending }) => console.log(`Make live now: sent ${sent}/${pending} "course is live" email(s) for course ${req.params.courseId}`))
+    .catch((error) => console.error(`"Course is live" emails for course ${req.params.courseId} failed:`, error));
+
+  return res.status(200).json({
+    success: true,
+    message: "The course is live. Prelaunch buyers are being emailed.",
+    data: result,
+  });
 });

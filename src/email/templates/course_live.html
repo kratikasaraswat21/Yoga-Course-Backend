@@ -4,11 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Your course is live | Kratika Yoga</title>
+    <style>
+      /* Phones: tighter padding and smaller type. Desktop keeps the inline styles. */
+      @media only screen and (max-width: 600px) {
+        .email-outer { padding: 12px 8px !important; }
+        .email-edge { padding: 18px 20px !important; }
+        .email-body { padding: 28px 22px !important; }
+        .email-body .email-title { font-size: 26px !important; line-height: 1.2 !important; margin-bottom: 16px !important; }
+        .email-body p { font-size: 15px !important; line-height: 1.6 !important; }
+        .email-body .email-subtitle { font-size: 19px !important; line-height: 1.35 !important; }
+      }
+    </style>
   </head>
   <body style="margin: 0; padding: 0; background: #f7f5ed; color: #173d35; font-family: Arial, Helvetica, sans-serif">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f7f5ed">
       <tr>
-        <td style="text-align: left; padding: 32px 16px">
+        <td class="email-outer" style="text-align: left; padding: 32px 16px">
           <table
             role="presentation"
             width="100%"
@@ -18,7 +29,7 @@
             border="0"
             style="width: 100%; max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e5e1d6">
             <tr>
-              <td style="padding: 24px 32px; border-bottom: 1px solid #e5e1d6">
+              <td class="email-edge" style="padding: 24px 32px; border-bottom: 1px solid #e5e1d6">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                   <tr>
                     <td>
@@ -43,8 +54,8 @@
               </td>
             </tr>
             <tr>
-              <td style="padding: 48px">
-                <h1
+              <td class="email-body" style="padding: 48px">
+                <h1 class="email-title"
                   style="
                     margin: 0 0 20px;
                     font-family: Georgia, &quot;Times New Roman&quot;, serif;
@@ -57,7 +68,7 @@
                 <p style="margin: 0 0 24px; color: #53665f; font-size: 16px; line-height: 1.7">
                   Hello <strong style="color: #173d35">{{USER_NAME}}</strong>,<br /><br />The wait is over. The course you joined early is now open:
                 </p>
-                <p
+                <p class="email-subtitle"
                   style="
                     margin: 0 0 24px;
                     color: #173d35;
@@ -94,7 +105,7 @@
               </td>
             </tr>
             <tr>
-              <td style="padding: 24px 32px; background: #123f35; color: #dce4d6; font-size: 12px; line-height: 1.6">
+              <td class="email-edge" style="padding: 24px 32px; background: #123f35; color: #dce4d6; font-size: 12px; line-height: 1.6">
                 <span style="font-family: Georgia, &quot;Times New Roman&quot;, serif; font-size: 16px; color: #fff"
                   >Kratika Yoga</span
                 ><br />© 2026 Kratika Yoga. All rights reserved.

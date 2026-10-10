@@ -68,8 +68,9 @@ courseRouter.post(
     .trim()
     .notEmpty()
     .withMessage("Thumbnail file type is required")
-    .isIn(["image/jpeg", "image/png", "image/webp"])
-    .withMessage("Only JPEG, PNG and WebP thumbnails are supported"),
+    // SVG is used for the landing page's stat tile icons.
+    .isIn(["image/jpeg", "image/png", "image/webp", "image/svg+xml"])
+    .withMessage("Only JPEG, PNG, WebP and SVG images are supported"),
 
   body("fileSize")
     .notEmpty()

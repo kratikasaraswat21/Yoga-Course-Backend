@@ -136,9 +136,10 @@ export const retryPendingPurchaseEmailsService = async (now = new Date()) => {
  * Daily job: "your course is live" for prelaunch buyers whose course now has a released video.
  * Normal buyers never get this email.
  */
-export const sendCourseLiveEmailsService = async (now = new Date()) => {
+export const sendCourseLiveEmailsService = async (now = new Date(), courseId = undefined) => {
   const enrollments = await prisma.enrollment.findMany({
     where: {
+      ...(courseId && { courseId }),
       status: "ACTIVE",
       isPrelaunchPurchase: true,
       liveEmailSentAt: null,
