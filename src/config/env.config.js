@@ -1,6 +1,11 @@
 import "dotenv/config";
 
+// "development" or "production". Development sends email through SMTP; production uses Resend.
+const ENVIRONMENT = (process.env.ENVIRONMENT ?? "development").trim().toLowerCase() === "production" ? "production" : "development";
+
 export const EnvConfig = {
+  ENVIRONMENT,
+  IS_PRODUCTION: ENVIRONMENT === "production",
   PORT: parseInt(process.env.PORT ?? "501", 10),
   DATABASE_URL: process.env.DATABASE_URL,
   ADMIN_EMAIL: process.env.ADMIN_EMAIL,
@@ -39,4 +44,8 @@ export const EnvConfig = {
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
   RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
+
+  // Public website that caches course pages; the backend asks it to refresh them after changes.
+  LANDING_SITE_URL: (process.env.LANDING_SITE_URL ?? "").trim().replace(/\/$/, ""),
+  LANDING_REVALIDATE_SECRET: process.env.LANDING_REVALIDATE_SECRET,
 };

@@ -9,6 +9,10 @@ import {
   fetchCourseDetailsController,
   fetchCourseStepOneController,
   generateCourseThumbnailUploadURL,
+  getCourseLandingContentController,
+  updateCourseLandingContentController,
+  createCourseTrailerUploadController,
+  deleteCourseTrailerController,
   getCourseAnalyticsController,
   publishCourseController,
   restoreCourseAccessController,
@@ -19,6 +23,34 @@ import { Router } from "express";
 import { body, param } from "express-validator";
 
 const courseRouter = Router();
+
+const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+
+// Optional fields shared by "add step one" and "edit": course URL slug and the prelaunch offer.
+const courseSlugAndPrelaunchValidators = [
+  body("slug")
+    .optional({ values: "falsy" })
+    .isString()
+    .trim()
+    .isLength({ max: 80 })
+    .withMessage("Course URL can't be longer than 80 characters")
+    .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .withMessage("Course URL can only contain lowercase letters, numbers and single hyphens"),
+  body("sequentialUnlock").optional().isBoolean().withMessage("sequentialUnlock must be true or false"),
+  body("prelaunchEnabled").optional().isBoolean().withMessage("prelaunchEnabled must be true or false"),
+  body("prelaunchStartDate")
+    .if(body("prelaunchEnabled").custom((value) => value === true || value === "true"))
+    .matches(DATE_FORMAT)
+    .withMessage("Prelaunch start date must be in YYYY-MM-DD format"),
+  body("prelaunchEndDate")
+    .if(body("prelaunchEnabled").custom((value) => value === true || value === "true"))
+    .matches(DATE_FORMAT)
+    .withMessage("Prelaunch end date must be in YYYY-MM-DD format"),
+  body("prelaunchDiscount")
+    .if(body("prelaunchEnabled").custom((value) => value === true || value === "true"))
+    .isFloat({ gt: 0, max: 100 })
+    .withMessage("Prelaunch discount must be more than 0% and at most 100%"),
+];
 
 const MAX_COURSE_THUMBNAIL_SIZE = 10 * 1024 * 1024;
 
@@ -36,8 +68,9 @@ courseRouter.post(
     .trim()
     .notEmpty()
     .withMessage("Thumbnail file type is required")
-    .isIn(["image/jpeg", "image/png", "image/webp"])
-    .withMessage("Only JPEG, PNG and WebP thumbnails are supported"),
+    // SVG is used for the landing page's stat tile icons.
+    .isIn(["image/jpeg", "image/png", "image/webp", "image/svg+xml"])
+    .withMessage("Only JPEG, PNG, WebP and SVG images are supported"),
 
   body("fileSize")
     .notEmpty()
@@ -82,6 +115,7 @@ courseRouter.post(
   body("roundPayableAmount").isBoolean(),
   body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
   body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
+  ...courseSlugAndPrelaunchValidators,
 
   ValidateRequestParametersMiddleware,
   addCourseDataForStepOne,
@@ -106,6 +140,7 @@ courseRouter.post(
   body("roundPayableAmount").isBoolean(),
   body("thumbnailURL").notEmpty().withMessage("Course Thumbnail Url is required"),
   body("thumbnailId").notEmpty().withMessage("Course Thumbnail Id is required"),
+  ...courseSlugAndPrelaunchValidators,
 
   ValidateRequestParametersMiddleware,
   editCourseDetailsController,
@@ -167,6 +202,53 @@ courseRouter.get(
   param("courseId").trim().notEmpty().withMessage(ERROR_MESSAGES.COURSE_ID_REQUIRED),
   ValidateRequestParametersMiddleware,
   fetchCourseStepOneController,
+);
+
+courseRouter.get(
+  "/:courseId/landing-content",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  ValidateRequestParametersMiddleware,
+  getCourseLandingContentController,
+);
+
+courseRouter.put(
+  "/:courseId/landing-content",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  body("landingPageEnabled").isBoolean().withMessage("landingPageEnabled must be true or false"),
+  body("content").optional({ values: "null" }).isObject().withMessage("content must be an object"),
+  body("trailerPosterUrl").optional({ values: "null" }).isString().withMessage("Trailer thumbnail URL must be text"),
+  body("trailerPosterId").optional({ values: "null" }).isString().withMessage("Trailer thumbnail ID must be text"),
+  ValidateRequestParametersMiddleware,
+  updateCourseLandingContentController,
+);
+
+const MAX_TRAILER_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB
+
+courseRouter.post(
+  "/:courseId/trailer/upload-url",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  body("fileName").trim().notEmpty().isLength({ max: 255 }).withMessage("Trailer file name is required"),
+  body("fileType")
+    .isIn(["video/mp4", "video/webm", "video/quicktime"])
+    .withMessage("Only MP4, WebM and MOV trailers are supported"),
+  body("fileSize")
+    .isInt({ min: 1, max: MAX_TRAILER_FILE_SIZE })
+    .withMessage("Trailer file size must be between 1 byte and 5 GB")
+    .toInt(),
+  body("maxDurationSeconds").isFloat({ min: 1 }).withMessage("Trailer duration is required").toFloat(),
+  ValidateRequestParametersMiddleware,
+  createCourseTrailerUploadController,
+);
+
+courseRouter.delete(
+  "/:courseId/trailer",
+  AdminValidateMiddleware,
+  param("courseId").isUUID().withMessage("Valid course ID is required"),
+  ValidateRequestParametersMiddleware,
+  deleteCourseTrailerController,
 );
 
 courseRouter.patch(
