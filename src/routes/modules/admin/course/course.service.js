@@ -4,6 +4,14 @@ import { prisma } from "#src/lib/prisma.js";
 import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 import { deleteYogaCourseVideoFromCloudFlair } from "#src/routes/modules/admin/video-uploads/video-upload.service.js";
 import { SendEmailNotificationService } from "#src/email/email.service.js";
+import { calculatePayableAmount, getPrelaunchState } from "#src/utils/course-pricing.util.js";
+import { addDaysToIstDate, getIstToday, istDateToUtc, isValidIstDateString, utcToIstDate } from "#src/utils/ist-date.util.js";
+import { revalidateCoursePages } from "#src/utils/landing-revalidate.util.js";
+import { ensureAvailableCourseSlug, generateUniqueCourseSlug } from "#src/utils/slug.util.js";
+import { formatLandingContent, getLandingContentImageIds, sanitizeLandingContentInput } from "#src/utils/course-landing.util.js";
+import { destroyCourseFeedbackImageFiles } from "#src/routes/modules/admin/instagramFeedback/instagram-feedback.service.js";
+import { encodeMetadata } from "#src/utils/helper.js";
+import { groupCourseVideos, videoGroupSelect } from "#src/utils/course-video-group.util.js";
 
 const isValidCloudflareImageId = (imageId) => Boolean(imageId && imageId !== "-");
 
@@ -69,48 +77,192 @@ export const deleteThumbnailImageService = async ({ encodedImageId, imageId }) =
   };
 };
 
+const badRequest = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
+// The prelaunch offer can run for at most this many days (end date - start date).
+export const MAX_PRELAUNCH_DAYS = 20;
+
+const PRELAUNCH_CLEARED = {
+  prelaunchEnabled: false,
+  prelaunchStartAt: null,
+  prelaunchEndAt: null,
+  prelaunchDiscount: 0,
+  prelaunchPayableAmount: 0,
+};
+
+/**
+ * Validates the prelaunch fields sent by the admin form and returns the columns to save.
+ * Returns undefined when the request didn't include prelaunch fields, so they stay unchanged.
+ * Dates are whole days in IST; the offer starts at 00:00 IST on the start date and ends at
+ * 00:00 IST on the end date.
+ */
+const buildPrelaunchData = ({ prelaunch, price, roundPayableAmount, existingCourse }) => {
+  if (prelaunch?.enabled === undefined) {
+    if (!existingCourse?.prelaunchEnabled) return undefined;
+
+    // Price or rounding changed: keep the prelaunch price in line with the new course price.
+    const prelaunchPayableAmount = calculatePayableAmount(price, existingCourse.prelaunchDiscount, roundPayableAmount);
+    return prelaunchPayableAmount > 0 ? { prelaunchPayableAmount } : undefined;
+  }
+
+  if (!prelaunch.enabled) return PRELAUNCH_CLEARED;
+
+  const { startDate, endDate } = prelaunch;
+  const discount = Number(prelaunch.discount);
+
+  if (!isValidIstDateString(startDate)) throw badRequest("Prelaunch start date is required (YYYY-MM-DD)");
+  if (!isValidIstDateString(endDate)) throw badRequest("Prelaunch end date is required (YYYY-MM-DD)");
+  if (endDate <= startDate) throw badRequest("Prelaunch end date must be after the start date");
+  if (endDate > addDaysToIstDate(startDate, MAX_PRELAUNCH_DAYS)) {
+    throw badRequest(`The prelaunch offer can run for at most ${MAX_PRELAUNCH_DAYS} days`);
+  }
+
+  const today = getIstToday();
+  const existingStartDate = utcToIstDate(existingCourse?.prelaunchStartAt);
+  const existingEndDate = utcToIstDate(existingCourse?.prelaunchEndAt);
+
+  // A prelaunch that already started can keep its start date; a new or changed start date can't be in the past.
+  if (startDate < today && startDate !== existingStartDate) {
+    throw badRequest("Prelaunch start date can't be in the past");
+  }
+  if (endDate <= today && endDate !== existingEndDate) {
+    throw badRequest("Prelaunch end date must be after today");
+  }
+
+  if (!Number.isFinite(discount) || discount <= 0 || discount > 100) {
+    throw badRequest("Prelaunch discount must be more than 0% and at most 100%");
+  }
+
+  const prelaunchPayableAmount = calculatePayableAmount(price, discount, roundPayableAmount);
+  if (!(prelaunchPayableAmount > 0)) {
+    throw badRequest("The prelaunch price must be more than ₹0. Lower the prelaunch discount.");
+  }
+
+  return {
+    prelaunchEnabled: true,
+    prelaunchStartAt: istDateToUtc(startDate),
+    prelaunchEndAt: istDateToUtc(endDate),
+    prelaunchDiscount: discount,
+    prelaunchPayableAmount,
+  };
+};
+
 export const addYogaCourseForStepOne = async ({
   title,
+  slug,
   description,
   price,
   discount,
   totalPayableAmount,
+  roundPayableAmount,
+  prelaunch,
+  sequentialUnlock,
   thumbnailUrl,
   thumbnailId,
 }) => {
-  return await prisma.yogaCourse.create({
+  const courseSlug = slug ? await ensureAvailableCourseSlug(slug) : await generateUniqueCourseSlug(title);
+  const prelaunchData = buildPrelaunchData({ prelaunch, price, roundPayableAmount, existingCourse: null });
+
+  const course = await prisma.yogaCourse.create({
     data: {
       title,
+      slug: courseSlug,
       description,
       status: CourseStatus.DRAFT,
       price,
       discount,
       totalPayableAmount,
+      ...(prelaunchData ?? {}),
+      sequentialUnlock: sequentialUnlock === true,
       thumbnailUrl,
       thumbnailId,
     },
   });
+
+  revalidateCoursePages(course.id);
+  return course;
 };
 
 export const updateYogaCourseDetailsService = async (
   courseId,
-  { title, description, price, discount, totalPayableAmount, thumbnailUrl, thumbnailId, status },
+  {
+    title,
+    slug,
+    description,
+    price,
+    discount,
+    totalPayableAmount,
+    roundPayableAmount,
+    prelaunch,
+    sequentialUnlock,
+    thumbnailUrl,
+    thumbnailId,
+    status,
+  },
 ) => {
-  return await prisma.yogaCourse.update({
+  const existingCourse = await prisma.yogaCourse.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      slug: true,
+      prelaunchEnabled: true,
+      prelaunchStartAt: true,
+      prelaunchEndAt: true,
+      prelaunchDiscount: true,
+    },
+  });
+
+  if (!existingCourse) {
+    const error = new Error(ERROR_MESSAGES.COURSE_NOT_FOUND);
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const courseSlug = slug && slug !== existingCourse.slug ? await ensureAvailableCourseSlug(slug, courseId) : undefined;
+  const prelaunchData = buildPrelaunchData({ prelaunch, price, roundPayableAmount, existingCourse });
+
+  const course = await prisma.yogaCourse.update({
     where: {
       id: courseId,
     },
     data: {
       title,
+      slug: courseSlug,
       description,
       status,
       price,
       discount,
       totalPayableAmount,
+      ...(prelaunchData ?? {}),
+      sequentialUnlock,
       thumbnailUrl,
       thumbnailId,
     },
   });
+
+  revalidateCoursePages(courseId);
+  return course;
+};
+
+const formatPrelaunchForAdmin = (course) => ({
+  prelaunchEnabled: course.prelaunchEnabled,
+  prelaunchStartDate: utcToIstDate(course.prelaunchStartAt),
+  prelaunchEndDate: utcToIstDate(course.prelaunchEndAt),
+  prelaunchDiscount: course.prelaunchDiscount,
+  prelaunchPayableAmount: course.prelaunchPayableAmount,
+  prelaunchState: getPrelaunchState(course),
+});
+
+const adminCoursePrelaunchSelect = {
+  prelaunchEnabled: true,
+  prelaunchStartAt: true,
+  prelaunchEndAt: true,
+  prelaunchDiscount: true,
+  prelaunchPayableAmount: true,
 };
 
 export const getYogaCourseDetailsService = async (courseId) => {
@@ -121,11 +273,15 @@ export const getYogaCourseDetailsService = async (courseId) => {
     select: {
       id: true,
       title: true,
+      slug: true,
       description: true,
       status: true,
       price: true,
       discount: true,
       totalPayableAmount: true,
+      ...adminCoursePrelaunchSelect,
+      sequentialUnlock: true,
+      landingPageEnabled: true,
       thumbnailUrl: true,
       thumbnailId: true,
       createdAt: true,
@@ -142,8 +298,11 @@ export const getYogaCourseDetailsService = async (courseId) => {
           durationSeconds: true,
           fileSize: true,
           sortOrder: true,
+          releaseAt: true,
+          groupId: true,
         },
       },
+      videoGroups: videoGroupSelect,
     },
   });
 
@@ -153,19 +312,28 @@ export const getYogaCourseDetailsService = async (courseId) => {
     throw error;
   }
 
+  const { prelaunchStartAt, prelaunchEndAt, videoGroups, ...courseData } = course;
+  const now = new Date();
+  const courseVideos = course.courseVideos.map((video) => ({
+    id: video.id,
+    originalName: video.originalFileName,
+    title: video.title,
+    description: video.description,
+    thumbnailUrl: video.thumbnailUrl,
+    status: video.status,
+    durationSeconds: video.durationSeconds,
+    fileSize: video.fileSize.toString(),
+    sortOrder: video.sortOrder,
+    releaseDate: utcToIstDate(video.releaseAt),
+    isScheduled: Boolean(video.releaseAt && video.releaseAt > now),
+    groupId: video.groupId,
+  }));
+
   return {
-    ...course,
-    courseVideos: course.courseVideos.map((video) => ({
-      id: video.id,
-      originalName: video.originalFileName,
-      title: video.title,
-      description: video.description,
-      thumbnailUrl: video.thumbnailUrl,
-      status: video.status,
-      durationSeconds: video.durationSeconds,
-      fileSize: video.fileSize.toString(),
-      sortOrder: video.sortOrder,
-    })),
+    ...courseData,
+    ...formatPrelaunchForAdmin(course),
+    courseVideos,
+    groups: groupCourseVideos(courseVideos, videoGroups, { includeEmpty: true }),
   };
 };
 
@@ -177,11 +345,14 @@ export const getYogaCourseStepOneService = async (courseId) => {
     select: {
       id: true,
       title: true,
+      slug: true,
       description: true,
       status: true,
       price: true,
       discount: true,
       totalPayableAmount: true,
+      ...adminCoursePrelaunchSelect,
+      sequentialUnlock: true,
       thumbnailUrl: true,
       thumbnailId: true,
     },
@@ -196,6 +367,9 @@ export const getYogaCourseStepOneService = async (courseId) => {
   return {
     courseId: course.id,
     title: course.title,
+    slug: course.slug,
+    ...formatPrelaunchForAdmin(course),
+    sequentialUnlock: course.sequentialUnlock,
     description: course.description,
     status: course.status,
     price: Number(course.price),
@@ -207,7 +381,7 @@ export const getYogaCourseStepOneService = async (courseId) => {
 };
 
 export const publishYogaCourseService = async (courseId) => {
-  return prisma.$transaction(async (transaction) => {
+  const result = await prisma.$transaction(async (transaction) => {
     const course = await transaction.yogaCourse.findUnique({
       where: {
         id: courseId,
@@ -272,6 +446,9 @@ export const publishYogaCourseService = async (courseId) => {
       course: publishedCourse,
     };
   });
+
+  if (result.success) revalidateCoursePages(courseId);
+  return result;
 };
 
 export const fetchAllYogaCoursesService = async () => {
@@ -287,6 +464,10 @@ export const fetchAllYogaCoursesService = async () => {
       price: true,
       discount: true,
       totalPayableAmount: true,
+      slug: true,
+      ...adminCoursePrelaunchSelect,
+      sequentialUnlock: true,
+      landingPageEnabled: true,
       thumbnailUrl: true,
       thumbnailId: true,
       createdAt: true,
@@ -310,8 +491,9 @@ export const fetchAllYogaCoursesService = async () => {
     },
   });
 
-  return courses.map(({ _count, reviews, ...course }) => ({
+  return courses.map(({ _count, reviews, prelaunchStartAt, prelaunchEndAt, ...course }) => ({
     ...course,
+    ...formatPrelaunchForAdmin({ ...course, prelaunchStartAt, prelaunchEndAt }),
     videoCount: _count.courseVideos,
     totalEnrolledStudents: _count.enrollments,
     averageRating:
@@ -515,12 +697,14 @@ export const deleteYogaCourseService = async (courseId) => {
     select: {
       id: true,
       thumbnailId: true,
+      landingContent: { select: { content: true, trailerVideoUid: true, trailerPosterId: true } },
       courseVideos: {
         select: {
           cloudflareVideoUid: true,
           thumbnailId: true,
         },
       },
+      feedbackImages: { select: { publicId: true } },
       _count: {
         select: {
           orders: true,
@@ -542,7 +726,12 @@ export const deleteYogaCourseService = async (courseId) => {
     throw error;
   }
 
-  const imageIds = [course.thumbnailId, ...course.courseVideos.map((video) => video.thumbnailId)].filter(
+  const imageIds = [
+    course.thumbnailId,
+    ...getLandingContentImageIds(course.landingContent?.content),
+    course.landingContent?.trailerPosterId,
+    ...course.courseVideos.map((video) => video.thumbnailId),
+  ].filter(
     isValidCloudflareImageId,
   );
   const uniqueImageIds = [...new Set(imageIds)];
@@ -553,9 +742,17 @@ export const deleteYogaCourseService = async (courseId) => {
       .filter(Boolean)
       .map((videoUid) => deleteYogaCourseVideoFromCloudFlair(videoUid)),
     ...uniqueImageIds.map((imageId) => deleteCloudflareImageIfPresent(imageId)),
+    course.landingContent?.trailerVideoUid
+      ? deleteYogaCourseVideoFromCloudFlair(course.landingContent.trailerVideoUid).catch((error) =>
+          console.error("Trailer deletion on Cloudflare failed:", error.message),
+        )
+      : null,
   ]);
 
   await prisma.yogaCourse.delete({ where: { id: courseId } });
+  revalidateCoursePages(courseId);
+  // The rows are deleted with the course; their files are only cleaned up, so a failure never blocks.
+  void destroyCourseFeedbackImageFiles(course.feedbackImages.map((image) => image.publicId));
 
   return {
     courseId,
@@ -563,4 +760,234 @@ export const deleteYogaCourseService = async (courseId) => {
     deletedThumbnailCount: uniqueImageIds.length,
     deleted: true,
   };
+};
+
+// ---------- Course landing page: content, trailer (feature: optional public landing page) ----------
+
+const notFoundCourse = () => {
+  const error = new Error(ERROR_MESSAGES.COURSE_NOT_FOUND);
+  error.statusCode = 404;
+  return error;
+};
+
+const formatTrailer = (landingContent) => {
+  if (!landingContent?.trailerVideoUid) return null;
+
+  return {
+    videoUid: landingContent.trailerVideoUid,
+    status: landingContent.trailerStatus,
+    fileName: landingContent.trailerFileName,
+    durationSeconds: landingContent.trailerDurationSeconds,
+    thumbnailUrl: landingContent.trailerThumbnailUrl,
+    posterUrl: landingContent.trailerPosterUrl,
+    posterId: landingContent.trailerPosterId,
+  };
+};
+
+const formatLandingPageForAdmin = (course) => ({
+  courseId: course.id,
+  title: course.title,
+  slug: course.slug,
+  status: course.status,
+  landingPageEnabled: course.landingPageEnabled,
+  content: formatLandingContent(course.landingContent?.content),
+  trailer: formatTrailer(course.landingContent),
+});
+
+const landingPageAdminSelect = {
+  id: true,
+  title: true,
+  slug: true,
+  status: true,
+  landingPageEnabled: true,
+  landingContent: true,
+};
+
+/**
+ * While a trailer is still uploading/processing, ask Cloudflare for its status. The webhook normally
+ * does this, but webhooks can't reach a local development server.
+ */
+const syncTrailerStatusFromCloudflare = async (courseId, landingContent) => {
+  const isPending = landingContent?.trailerVideoUid && !["READY", "ERROR"].includes(landingContent.trailerStatus);
+  if (!isPending || !EnvConfig.CLOUDFLARE_ACCOUNT_ID || !EnvConfig.CLOUDFLARE_STREAM_API_TOKEN) return landingContent;
+
+  try {
+    const response = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${EnvConfig.CLOUDFLARE_ACCOUNT_ID}/stream/${encodeURIComponent(landingContent.trailerVideoUid)}`,
+      { headers: { Authorization: `Bearer ${EnvConfig.CLOUDFLARE_STREAM_API_TOKEN}` }, signal: AbortSignal.timeout(8000) },
+    );
+    const result = (await response.json())?.result;
+    if (!response.ok || !result) return landingContent;
+
+    const state = result.status?.state;
+    const data =
+      result.readyToStream === true && state === "ready"
+        ? {
+            trailerStatus: "READY",
+            trailerHlsUrl: result.playback?.hls ?? null,
+            trailerThumbnailUrl: result.thumbnail ?? null,
+            trailerDurationSeconds: result.duration ?? null,
+          }
+        : state === "error"
+          ? { trailerStatus: "ERROR" }
+          : ["queued", "inprogress", "downloading"].includes(state)
+            ? { trailerStatus: "PROCESSING" }
+            : null;
+    if (!data || data.trailerStatus === landingContent.trailerStatus) return landingContent;
+
+    const updated = await prisma.courseLandingContent.update({ where: { courseId }, data });
+    if (data.trailerStatus === "READY") revalidateCoursePages(courseId);
+    return updated;
+  } catch (error) {
+    console.error("Trailer status check failed:", error.message);
+    return landingContent;
+  }
+};
+
+export const getCourseLandingContentService = async (courseId) => {
+  const course = await prisma.yogaCourse.findUnique({ where: { id: courseId }, select: landingPageAdminSelect });
+  if (!course) throw notFoundCourse();
+  const landingContent = await syncTrailerStatusFromCloudflare(courseId, course.landingContent);
+  return formatLandingPageForAdmin({ ...course, landingContent });
+};
+
+export const updateCourseLandingContentService = async (courseId, input) => {
+  const course = await prisma.yogaCourse.findUnique({
+    where: { id: courseId },
+    select: { id: true, landingContent: { select: { content: true, trailerPosterId: true } } },
+  });
+  if (!course) throw notFoundCourse();
+
+  const landingPageEnabled = input.landingPageEnabled === true;
+  const content = sanitizeLandingContentInput(input.content ?? {});
+  const trailerPosterUrl = typeof input.trailerPosterUrl === "string" ? input.trailerPosterUrl.trim().slice(0, 1000) : undefined;
+  const trailerPosterId = trailerPosterUrl ? String(input.trailerPosterId ?? "").trim().slice(0, 255) || null : null;
+  const posterData = trailerPosterUrl === undefined ? {} : { trailerPosterUrl: trailerPosterUrl || null, trailerPosterId };
+
+  const [updatedCourse] = await prisma.$transaction([
+    prisma.yogaCourse.update({ where: { id: courseId }, data: { landingPageEnabled }, select: { id: true } }),
+    prisma.courseLandingContent.upsert({
+      where: { courseId },
+      update: { content, ...posterData },
+      create: { courseId, content, ...posterData },
+    }),
+  ]);
+
+  // Images that were replaced or removed are no longer used anywhere, so delete them (best effort).
+  const previousImageIds = [
+    ...getLandingContentImageIds(course.landingContent?.content),
+    course.landingContent?.trailerPosterId,
+  ].filter(Boolean);
+  const currentImageIds = new Set([...getLandingContentImageIds(content), posterData.trailerPosterId ?? course.landingContent?.trailerPosterId]);
+  previousImageIds
+    .filter((imageId) => !currentImageIds.has(imageId))
+    .forEach((imageId) => deleteCloudflareImageIfPresent(imageId).catch((error) => console.error("Image clean-up failed:", error.message)));
+
+  revalidateCoursePages(updatedCourse.id);
+  return getCourseLandingContentService(courseId);
+};
+
+/**
+ * Creates a direct (TUS) upload for the course trailer on Cloudflare Stream. Unlike lesson videos the
+ * trailer is public (no signed URLs), so anyone can watch it on the landing page. Uploading a new
+ * trailer replaces the old one.
+ */
+export const createCourseTrailerUploadService = async ({ courseId, fileName, fileType, fileSize, maxDurationSeconds }) => {
+  const course = await prisma.yogaCourse.findUnique({
+    where: { id: courseId },
+    select: { id: true, landingContent: { select: { trailerVideoUid: true } } },
+  });
+  if (!course) throw notFoundCourse();
+
+  if (!EnvConfig.CLOUDFLARE_ACCOUNT_ID || !EnvConfig.CLOUDFLARE_STREAM_API_TOKEN) {
+    throw new Error(ERROR_MESSAGES.CLOUDFLARE_STREAM_CONFIGURATION_MISSING);
+  }
+
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const uploadMetadata = encodeMetadata({
+    name: fileName,
+    maxDurationSeconds: String(Math.ceil(maxDurationSeconds)),
+    expiry: expiresAt,
+  });
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${EnvConfig.CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${EnvConfig.CLOUDFLARE_STREAM_API_TOKEN}`,
+        "Tus-Resumable": "1.0.0",
+        "Upload-Length": String(fileSize),
+        "Upload-Metadata": uploadMetadata,
+      },
+    },
+  );
+
+  const uploadUrl = response.headers.get("Location");
+  const videoUid = response.headers.get("stream-media-id");
+  if (!response.ok || !uploadUrl || !videoUid) {
+    console.error("Cloudflare trailer upload initialization failed:", response.status, await response.text().catch(() => ""));
+    throw new Error(ERROR_MESSAGES.VIDEO_UPLOAD_INITIALIZATION_FAILED);
+  }
+
+  const previousVideoUid = course.landingContent?.trailerVideoUid;
+  const trailerData = {
+    trailerVideoUid: videoUid,
+    trailerStatus: "UPLOADING",
+    trailerHlsUrl: null,
+    trailerThumbnailUrl: null,
+    trailerDurationSeconds: null,
+    trailerFileName: fileName,
+  };
+
+  await prisma.courseLandingContent.upsert({
+    where: { courseId },
+    update: trailerData,
+    create: { courseId, ...trailerData },
+  });
+
+  if (previousVideoUid && previousVideoUid !== videoUid) {
+    deleteYogaCourseVideoFromCloudFlair(previousVideoUid).catch((error) =>
+      console.error("Old trailer clean-up failed:", error.message),
+    );
+  }
+
+  revalidateCoursePages(courseId);
+  return { videoUid, uploadUrl, expiresAt };
+};
+
+export const deleteCourseTrailerService = async (courseId) => {
+  const landingContent = await prisma.courseLandingContent.findUnique({
+    where: { courseId },
+    select: { trailerVideoUid: true, trailerPosterId: true },
+  });
+  if (!landingContent?.trailerVideoUid) {
+    const error = new Error("This course has no trailer");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await prisma.courseLandingContent.update({
+    where: { courseId },
+    data: {
+      trailerVideoUid: null,
+      trailerStatus: null,
+      trailerHlsUrl: null,
+      trailerThumbnailUrl: null,
+      trailerDurationSeconds: null,
+      trailerFileName: null,
+      trailerPosterUrl: null,
+      trailerPosterId: null,
+    },
+  });
+
+  await Promise.all([
+    deleteYogaCourseVideoFromCloudFlair(landingContent.trailerVideoUid).catch((error) =>
+      console.error("Trailer deletion on Cloudflare failed:", error.message),
+    ),
+    landingContent.trailerPosterId ? deleteCloudflareImageIfPresent(landingContent.trailerPosterId).catch(() => null) : null,
+  ]);
+
+  revalidateCoursePages(courseId);
+  return { courseId, deleted: true };
 };

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your prelaunch seat is confirmed | Kratika Yoga</title>
+    <style>
+      /* Phones: tighter padding and smaller type. Desktop keeps the inline styles. */
+      @media only screen and (max-width: 600px) {
+        .email-outer { padding: 12px 8px !important; }
+        .email-edge { padding: 18px 20px !important; }
+        .email-body { padding: 28px 22px !important; }
+        .email-body .email-title { font-size: 26px !important; line-height: 1.2 !important; margin-bottom: 16px !important; }
+        .email-body p { font-size: 15px !important; line-height: 1.6 !important; }
+        .email-body .email-subtitle { font-size: 19px !important; line-height: 1.35 !important; }
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background: #f7f5ed; color: #173d35; font-family: Arial, Helvetica, sans-serif">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f7f5ed">
+      <tr>
+        <td class="email-outer" style="text-align: left; padding: 32px 16px">
+          <table
+            role="presentation"
+            width="100%"
+            align="center"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="width: 100%; max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e5e1d6">
+            <tr>
+              <td class="email-edge" style="padding: 24px 32px; border-bottom: 1px solid #e5e1d6">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td>
+                      <img
+                        src="https://imagedelivery.net/SH-hcEmOvwBa8LQT3-yUDg/79e5c883-c7b3-4e51-d2d7-c7efd29ee600/public"
+                        width="44"
+                        height="44"
+                        alt="Kratika Yoga"
+                        style="display: block; border: 0" />
+                    </td>
+                    <td
+                      style="
+                        padding-left: 12px;
+                        color: #476900;
+                        font-family: Georgia, &quot;Times New Roman&quot;, serif;
+                        font-size: 20px;
+                      ">
+                      Kratika Yoga
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-body" style="padding: 48px">
+                <h1 class="email-title"
+                  style="
+                    margin: 0 0 20px;
+                    font-family: Georgia, &quot;Times New Roman&quot;, serif;
+                    font-size: 36px;
+                    font-weight: normal;
+                    line-height: 1.15;
+                  ">
+                  You’re in!
+                </h1>
+                <p style="margin: 0 0 24px; color: #53665f; font-size: 16px; line-height: 1.7">
+                  Hello <strong style="color: #173d35">{{USER_NAME}}</strong>,<br /><br />Thank you for joining early. Your prelaunch seat is confirmed for:
+                </p>
+                <p class="email-subtitle"
+                  style="
+                    margin: 0 0 24px;
+                    color: #173d35;
+                    font-family: Georgia, &quot;Times New Roman&quot;, serif;
+                    font-size: 22px;
+                    line-height: 1.35;
+                  ">
+                  {{COURSE_TITLE}}
+                </p>
+                <p style="margin: 0 0 24px; color: #53665f; font-size: 16px; line-height: 1.7">
+                  <strong style="color: #173d35">{{LIVE_STATUS_TEXT}}</strong>
+                </p>
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="margin: 0 0 28px; border: 1px solid #e5e1d6; background: #f7f5ed; font-size: 15px">
+                  <tr>
+                    <td style="padding: 14px 18px 6px; color: #53665f">Amount paid</td>
+                    <td style="padding: 14px 18px 6px; color: #173d35; font-weight: bold; text-align: right">
+                      {{AMOUNT_PAID}}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 18px; color: #53665f">Full price {{ORIGINAL_PRICE}}</td>
+                    <td style="padding: 6px 18px; color: #476900; text-align: right">{{SAVINGS_TEXT}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 18px; color: #53665f">Order ID</td>
+                    <td style="padding: 6px 18px; color: #173d35; text-align: right">{{ORDER_ID}}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 18px 14px; color: #53665f">Purchase date</td>
+                    <td style="padding: 6px 18px 14px; color: #173d35; text-align: right">{{PURCHASE_DATE}}</td>
+                  </tr>
+                </table>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="background: #c4532c; border-radius: 999px">
+                      <a
+                        href="{{COURSE_URL}}"
+                        style="
+                          display: inline-block;
+                          padding: 14px 28px;
+                          color: #fff;
+                          font-size: 16px;
+                          font-weight: bold;
+                          text-decoration: none;
+                        "
+                        >View your course</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 24px 0 0; color: #53665f; font-size: 15px; line-height: 1.7">
+                  {{LOCK_NOTE}}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td class="email-edge" style="padding: 24px 32px; background: #123f35; color: #dce4d6; font-size: 12px; line-height: 1.6">
+                <span style="font-family: Georgia, &quot;Times New Roman&quot;, serif; font-size: 16px; color: #fff"
+                  >Kratika Yoga</span
+                ><br />© 2026 Kratika Yoga. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

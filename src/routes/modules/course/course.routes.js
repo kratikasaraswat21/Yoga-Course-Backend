@@ -14,6 +14,8 @@ import {
   getTopRatedLandingCoursesController,
   getAllLandingCoursesController,
   getLandingPageReviewsController,
+  getCourseLandingSlugsController,
+  getCourseLandingBySlugController,
 } from "#src/routes/modules/course/course.controller.js";
 import { Router } from "express";
 import { param } from "express-validator";
@@ -24,6 +26,18 @@ courseRoutes.get("/", OptionalUserMiddleware, getPublishedCoursesController);
 courseRoutes.get("/top-rated", getTopRatedLandingCoursesController);
 courseRoutes.get("/all", getAllLandingCoursesController);
 courseRoutes.get("/reviews", getLandingPageReviewsController);
+// Public course landing pages. Registered before "/:courseId" so "landing" isn't read as a course ID.
+courseRoutes.get("/landing/slugs", getCourseLandingSlugsController);
+courseRoutes.get(
+  "/landing/:slug",
+  param("slug")
+    .trim()
+    .isLength({ min: 1, max: 80 })
+    .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .withMessage("Valid course URL is required"),
+  ValidateRequestParametersMiddleware,
+  getCourseLandingBySlugController,
+);
 courseRoutes.get("/my-courses", UserValidateMiddleware, getPurchasedCoursesController);
 
 courseRoutes.post(

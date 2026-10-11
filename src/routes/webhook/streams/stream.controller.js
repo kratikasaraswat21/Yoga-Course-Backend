@@ -1,6 +1,7 @@
 import { prisma } from "#src/lib/prisma.js";
 import { updateYogaCourseVideoDetails } from "#src/routes/webhook/streams/stream.service.js";
 import asyncHandler from "#src/utils/async-handler.util.js";
+import { revalidateCoursePages } from "#src/utils/landing-revalidate.util.js";
 import crypto from "node:crypto";
 
 export const verifyCloudflareStreamWebhook = ({ rawBody, signatureHeader, webhookSecret }) => {
@@ -114,6 +115,41 @@ export const cloudflareStreamWebhookController = asyncHandler(async (req, res) =
     },
   });
 
+  // Not a lesson video: it may be a course trailer (public video on the landing page).
+  if (!video) {
+    const trailer = await prisma.courseLandingContent.findUnique({
+      where: { trailerVideoUid: payload.uid },
+      select: { courseId: true },
+    });
+
+    if (trailer) {
+      const isTrailerReady = payload.readyToStream === true && payload.status.state === "ready";
+      const isTrailerFailed = payload.status.state === "error";
+
+      if (isTrailerReady || isTrailerFailed) {
+        await prisma.courseLandingContent.update({
+          where: { courseId: trailer.courseId },
+          data: isTrailerReady
+            ? {
+                trailerStatus: "READY",
+                trailerHlsUrl: payload.playback?.hls ?? null,
+                trailerThumbnailUrl: payload.thumbnail ?? null,
+                trailerDurationSeconds: payload.duration ?? null,
+              }
+            : { trailerStatus: "ERROR" },
+        });
+        revalidateCoursePages(trailer.courseId);
+      } else {
+        await prisma.courseLandingContent.update({
+          where: { courseId: trailer.courseId },
+          data: { trailerStatus: "PROCESSING" },
+        });
+      }
+
+      return res.status(200).json({ success: true, message: "Trailer webhook processed successfully" });
+    }
+  }
+
   /*
    * The video may already have been deleted locally.
    * Acknowledge the webhook instead of repeatedly failing.
@@ -150,6 +186,7 @@ export const cloudflareStreamWebhookController = asyncHandler(async (req, res) =
       errorCode: null,
       errorMessage: null,
     });
+    revalidateCoursePages(video.yogaCourseId);
   } else if (isFailed) {
     await updateYogaCourseVideoDetails(video.id, {
       status: "ERROR",

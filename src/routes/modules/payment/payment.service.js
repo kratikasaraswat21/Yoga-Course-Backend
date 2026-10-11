@@ -2,6 +2,8 @@ import { EnvConfig } from "#src/config/env.config.js";
 import { prisma } from "#src/lib/prisma.js";
 import { CourseStatus } from "#src/lib/enum.js";
 import { createHmac } from "node:crypto";
+import { coursePricingSelect, getCoursePricing, OfferType } from "#src/utils/course-pricing.util.js";
+import { sendCoursePurchaseEmailService } from "#src/routes/modules/course/course-notification.service.js";
 
 const razorpayRequest = async (path, options = {}) => {
   if (!EnvConfig.RAZORPAY_KEY_ID || !EnvConfig.RAZORPAY_KEY_SECRET) {
@@ -45,7 +47,7 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
 
   const course = await prisma.yogaCourse.findFirst({
     where: { id: courseId, status: CourseStatus.PUBLISHED },
-    select: { id: true, title: true, totalPayableAmount: true },
+    select: { id: true, title: true, ...coursePricingSelect },
   });
   if (!course) {
     const error = new Error("Course not found");
@@ -62,7 +64,10 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
     throw error;
   }
 
-  const amount = Math.round(Number(course.totalPayableAmount) * 100);
+  // The price is fixed when the order is created, so a prelaunch checkout opened before midnight
+  // still gets the prelaunch price if it is paid a few minutes later.
+  const pricing = getCoursePricing(course);
+  const amount = Math.round(Number(pricing.payableAmount) * 100);
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     const error = new Error("Course price must be greater than zero");
     error.statusCode = 400;
@@ -76,19 +81,28 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
       amount,
       currency: "INR",
       receipt: `course_${course.id.slice(0, 8)}_${Date.now()}`,
-      notes: { userId, courseId },
+      notes: { userId, courseId, offerType: pricing.offerType },
     }),
   });
 
   const order = await prisma.order.create({
     data: {
-      userId, courseId, amount: Number(course.totalPayableAmount), currency: "INR",
+      userId, courseId, amount: Number(pricing.payableAmount), currency: "INR",
+      offerType: pricing.offerType, discountPercent: pricing.discountPercent,
       status: "PAYMENT_PENDING", razorpayOrderId: razorpayOrder.id,
       payment: { create: { gateway: "RAZORPAY", status: "CREATED" } },
     },
   });
 
-  return { orderId: order.id, razorpayOrderId: razorpayOrder.id, amount, currency: "INR", keyId: EnvConfig.RAZORPAY_KEY_ID, course: { id: course.id, title: course.title } };
+  return {
+    orderId: order.id,
+    razorpayOrderId: razorpayOrder.id,
+    amount,
+    currency: "INR",
+    keyId: EnvConfig.RAZORPAY_KEY_ID,
+    offerType: pricing.offerType,
+    course: { id: course.id, title: course.title },
+  };
 };
 
 export const createPdfCourseOrderService = async ({ userId, pdfCourseId }) => {
@@ -185,7 +199,19 @@ export const verifyCoursePaymentService = async ({ userId, razorpayOrderId, razo
   return { orderId: order.id, courseId: order.courseId, status: "PAYMENT_PENDING", enrollmentPending: true };
 };
 
-export const processRazorpayWebhookService = async ({ eventId, eventType, orderId, paymentId, amount }) => {
+export const processRazorpayWebhookService = async (event) => {
+  const result = await recordRazorpayPayment(event);
+
+  // Emails are sent only after the payment is committed, and never hold up the webhook response.
+  if (result.courseEnrollmentId) {
+    sendCoursePurchaseEmailService(result.courseEnrollmentId).catch((error) =>
+      console.error("Purchase email failed:", error),
+    );
+  }
+  return result;
+};
+
+const recordRazorpayPayment = async ({ eventId, eventType, orderId, paymentId, amount }) => {
   if (!eventId) return { duplicate: false, processed: false };
 
   return prisma.$transaction(async (transaction) => {
@@ -209,7 +235,18 @@ export const processRazorpayWebhookService = async ({ eventId, eventType, orderI
       throw new Error("Razorpay webhook amount does not match the order");
     }
 
-    await transaction.order.update({ where: { id: order.id }, data: { status: "PAID" } });
+    // Razorpay sends both payment.captured and order.paid for one payment, with different event ids.
+    // Only the first one marks the order PAID and grants access; the conditional update also makes a
+    // concurrent second event wait for the first and then match nothing, so no second email is sent.
+    const markedPaid = await transaction.order.updateMany({
+      where: { id: order.id, status: { not: "PAID" } },
+      data: { status: "PAID" },
+    });
+    if (markedPaid.count === 0) {
+      await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
+      return { duplicate: true, processed: true };
+    }
+
     await transaction.payment.update({
       where: { orderId: order.id },
       data: { status: "CAPTURED", razorpayPaymentId: paymentId ?? undefined },
@@ -221,11 +258,31 @@ export const processRazorpayWebhookService = async ({ eventId, eventType, orderI
         create: { userId: order.userId, pdfCourseId: order.pdfCourseId, orderId: order.id, status: "ACTIVE" },
       });
     } else {
-      await transaction.enrollment.upsert({
+      // Bought at the prelaunch price: this buyer sees scheduled videos as locked with their dates.
+      const isPrelaunchPurchase = order.offerType === OfferType.PRELAUNCH;
+      // A new purchase (e.g. after access ended) gets its own confirmation and "course is live" emails.
+      const enrollment = await transaction.enrollment.upsert({
         where: { userId_courseId: { userId: order.userId, courseId: order.courseId } },
-        update: { status: "ACTIVE", revokedAt: null, revokeReason: null, orderId: order.id },
-        create: { userId: order.userId, courseId: order.courseId, orderId: order.id, status: "ACTIVE" },
+        update: {
+          status: "ACTIVE",
+          revokedAt: null,
+          revokeReason: null,
+          orderId: order.id,
+          isPrelaunchPurchase,
+          purchaseEmailSentAt: null,
+          liveEmailSentAt: null,
+        },
+        create: {
+          userId: order.userId,
+          courseId: order.courseId,
+          orderId: order.id,
+          status: "ACTIVE",
+          isPrelaunchPurchase,
+        },
+        select: { id: true },
       });
+      await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
+      return { duplicate: false, processed: true, courseEnrollmentId: enrollment.id };
     }
     await transaction.razorpayWebhookEvent.create({ data: { eventId, eventType } });
 
