@@ -9,6 +9,7 @@ import { addDaysToIstDate, getIstToday, istDateToUtc, isValidIstDateString, utcT
 import { revalidateCoursePages } from "#src/utils/landing-revalidate.util.js";
 import { ensureAvailableCourseSlug, generateUniqueCourseSlug } from "#src/utils/slug.util.js";
 import { formatLandingContent, getLandingContentImageIds, sanitizeLandingContentInput } from "#src/utils/course-landing.util.js";
+import { destroyCourseFeedbackImageFiles } from "#src/routes/modules/admin/instagramFeedback/instagram-feedback.service.js";
 import { encodeMetadata } from "#src/utils/helper.js";
 import { groupCourseVideos, videoGroupSelect } from "#src/utils/course-video-group.util.js";
 
@@ -703,6 +704,7 @@ export const deleteYogaCourseService = async (courseId) => {
           thumbnailId: true,
         },
       },
+      feedbackImages: { select: { publicId: true } },
       _count: {
         select: {
           orders: true,
@@ -749,6 +751,8 @@ export const deleteYogaCourseService = async (courseId) => {
 
   await prisma.yogaCourse.delete({ where: { id: courseId } });
   revalidateCoursePages(courseId);
+  // The rows are deleted with the course; their files are only cleaned up, so a failure never blocks.
+  void destroyCourseFeedbackImageFiles(course.feedbackImages.map((image) => image.publicId));
 
   return {
     courseId,

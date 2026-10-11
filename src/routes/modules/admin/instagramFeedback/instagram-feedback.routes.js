@@ -15,7 +15,14 @@ const instagramFeedbackAdminRoutes = Router();
 
 instagramFeedbackAdminRoutes.post("/cloud/signature", AdminValidateMiddleware, generateInstagramFeedbackUploadSignature);
 
-instagramFeedbackAdminRoutes.get("/fetch", AdminValidateMiddleware, fetchInstagramFeedbackImagesController);
+// `courseId` (optional) works with one course's own images; without it, with the global ones.
+instagramFeedbackAdminRoutes.get(
+  "/fetch",
+  AdminValidateMiddleware,
+  query("courseId").optional({ values: "falsy" }).isUUID().withMessage("courseId must be a valid course ID"),
+  ValidateRequestParametersMiddleware,
+  fetchInstagramFeedbackImagesController,
+);
 
 instagramFeedbackAdminRoutes.post(
   "/add",
@@ -23,6 +30,7 @@ instagramFeedbackAdminRoutes.post(
   body("imageUrl").isString().withMessage("imageUrl is required"),
   body("publicId").isString().withMessage("publicId is required"),
   body("altText").optional({ values: "null" }).isString().withMessage("altText must be text"),
+  body("courseId").optional({ values: "falsy" }).isUUID().withMessage("courseId must be a valid course ID"),
   ValidateRequestParametersMiddleware,
   addInstagramFeedbackImageController,
 );
@@ -31,6 +39,7 @@ instagramFeedbackAdminRoutes.put(
   "/reorder",
   AdminValidateMiddleware,
   body("orderedIds").isArray({ min: 1 }).withMessage("orderedIds must list the image IDs"),
+  body("courseId").optional({ values: "falsy" }).isUUID().withMessage("courseId must be a valid course ID"),
   ValidateRequestParametersMiddleware,
   reorderInstagramFeedbackImagesController,
 );

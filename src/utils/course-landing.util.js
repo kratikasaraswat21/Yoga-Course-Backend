@@ -54,10 +54,27 @@ export const LANDING_CONTENT_SCHEMA = object({
     text: text(TEXT),
     steps: list(NO_LIMIT, object({ title: text(120), text: text(TEXT) })),
   }),
+  // Roadmap: one card per week that opens to its points (one per line) and shows the week's 16:9 image
+  // on the right, then a button to the price card and a one-line note.
   benefits: object({
+    // Small label above the title, e.g. "Week by week".
+    eyebrow: text(SHORT),
     title: text(TITLE),
     text: text(TEXT),
-    items: list(12, text(TITLE)),
+    weeks: list(
+      12,
+      object({
+        title: text(120),
+        text: text(TEXT),
+        pointsTitle: text(SHORT),
+        points: text(LONG),
+        imageUrl: text(1000),
+        imageId: text(255),
+      }),
+    ),
+    button: text(SHORT),
+    // Line at the end of the section, e.g. "Everyone's body is different. Go at your own pace…".
+    note: text(TEXT),
   }),
   curriculum: object({
     title: text(TITLE),
@@ -70,6 +87,8 @@ export const LANDING_CONTENT_SCHEMA = object({
     badge: phase(SHORT),
     stepsTitle: text(SHORT),
     steps: object({ prelaunch: list(5, text(TITLE)), live: list(5, text(TITLE)) }),
+    // Ticked list under the steps, e.g. "30 daily videos, 10–12 min each".
+    features: list(12, text(TITLE)),
     button: text(SHORT),
     // Line under the price, e.g. "One-time payment · lifetime access · no subscription".
     note: text(TITLE),
@@ -212,7 +231,7 @@ export const sanitizeLandingContentInput = (input) => {
       throw badRequest(`${name} link must start with https://, /, #, mailto: or tel:`);
     }
   });
-  ["stats", "painPoints.items", "howItWorks.steps"].forEach((key) => {
+  ["stats", "painPoints.items", "howItWorks.steps", "benefits.weeks"].forEach((key) => {
     const items = key.split(".").reduce((value, part) => value[part], content);
     items.forEach((item, index) => {
       if (!item.title) throw badRequest(`${key} item ${index + 1} needs a title`);
@@ -221,6 +240,9 @@ export const sanitizeLandingContentInput = (input) => {
   if (!content.hero.coverImageUrl) content.hero.coverImageId = "";
   if (!content.instructor.imageUrl) content.instructor.imageId = "";
   if (!content.seo.imageUrl) content.seo.imageId = "";
+  content.benefits.weeks.forEach((week) => {
+    if (!week.imageUrl) week.imageId = "";
+  });
   [...content.stats, ...content.painPoints.items].forEach((item) => {
     if (!item.iconUrl) item.iconId = "";
   });
@@ -236,6 +258,9 @@ export const getLandingContentImageIds = (content) =>
   [
     content?.hero?.coverImageId,
     content?.instructor?.imageId,
+    // No longer editable; still listed so an image uploaded before is deleted on the next save.
+    content?.benefits?.imageId,
     content?.seo?.imageId,
     ...[content?.stats, content?.painPoints?.items].flatMap((items) => (Array.isArray(items) ? items.map((item) => item?.iconId) : [])),
+    ...(Array.isArray(content?.benefits?.weeks) ? content.benefits.weeks.map((week) => week?.imageId) : []),
   ].filter(Boolean);

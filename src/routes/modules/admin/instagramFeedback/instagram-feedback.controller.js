@@ -29,7 +29,7 @@ export const generateInstagramFeedbackUploadSignature = asyncHandler(async (req,
 });
 
 export const fetchInstagramFeedbackImagesController = asyncHandler(async (req, res) => {
-  const images = await fetchInstagramFeedbackImagesService();
+  const images = await fetchInstagramFeedbackImagesService(req.query?.courseId);
   return res.status(200).json({ success: true, message: "Feedback images fetched", data: { images } });
 });
 
@@ -38,12 +38,16 @@ export const addInstagramFeedbackImageController = asyncHandler(async (req, res)
     imageUrl: req.body?.imageUrl,
     publicId: req.body?.publicId,
     altText: req.body?.altText,
+    courseId: req.body?.courseId,
   });
   return res.status(201).json({ success: true, message: "Feedback image added", data: { image } });
 });
 
 export const reorderInstagramFeedbackImagesController = asyncHandler(async (req, res) => {
-  const images = await reorderInstagramFeedbackImagesService({ orderedIds: req.body?.orderedIds });
+  const images = await reorderInstagramFeedbackImagesService({
+    orderedIds: req.body?.orderedIds,
+    courseId: req.body?.courseId,
+  });
   return res.status(200).json({ success: true, message: "Order saved", data: { images } });
 });
 

@@ -18,23 +18,47 @@ const badRequest = (message) => {
   return error;
 };
 
-const imageSelect = { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true, createdAt: true };
+const imageSelect = { id: true, imageUrl: true, publicId: true, altText: true, courseId: true, sortOrder: true, createdAt: true };
+const imageOrder = [{ sortOrder: "asc" }, { createdAt: "asc" }];
+
+// Images without a course are global; `courseId` picks one course's own images.
+const scopeWhere = (courseId) => ({ courseId: courseId || null });
+
+const assertCourseExists = async (courseId) => {
+  if (!courseId) return;
+  const course = await prisma.yogaCourse.findUnique({ where: { id: courseId }, select: { id: true } });
+  if (!course) {
+    const error = new Error("Course not found");
+    error.statusCode = 404;
+    throw error;
+  }
+};
 
 export const signInstagramFeedbackUploadService = (timestamp) =>
   cloudinary.utils.api_sign_request({ timestamp, folder: INSTAGRAM_FEEDBACK_FOLDER }, EnvConfig.CLOUDINARY_API_SECRET);
 
-export const fetchInstagramFeedbackImagesService = () =>
-  prisma.instagramFeedbackImage.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], select: imageSelect });
+/** The global images, or one course's own images when `courseId` is given. */
+export const fetchInstagramFeedbackImagesService = (courseId) =>
+  prisma.instagramFeedbackImage.findMany({ where: scopeWhere(courseId), orderBy: imageOrder, select: imageSelect });
 
-/** Public list for the home page and course landing pages. */
-export const fetchPublicInstagramFeedbackImagesService = () =>
-  prisma.instagramFeedbackImage.findMany({
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: { id: true, imageUrl: true, altText: true },
-  });
+/**
+ * Public list. Without `courseId`: the global images (home page). With it: that course's own images,
+ * or the global ones when the course has none.
+ */
+export const fetchPublicInstagramFeedbackImagesService = async (courseId) => {
+  const select = { id: true, imageUrl: true, altText: true };
+  if (courseId) {
+    const courseImages = await prisma.instagramFeedbackImage.findMany({ where: { courseId }, orderBy: imageOrder, select });
+    if (courseImages.length > 0) return courseImages;
+  }
+  return prisma.instagramFeedbackImage.findMany({ where: { courseId: null }, orderBy: imageOrder, select });
+};
 
-/** Saves an image uploaded with the signature above. Only images from this site's upload folder are accepted. */
-export const addInstagramFeedbackImageService = async ({ imageUrl, publicId, altText }) => {
+/**
+ * Saves an image uploaded with the signature above, as a global image or for one course.
+ * Only images from this site's upload folder are accepted.
+ */
+export const addInstagramFeedbackImageService = async ({ imageUrl, publicId, altText, courseId }) => {
   const url = typeof imageUrl === "string" ? imageUrl.trim() : "";
   const id = typeof publicId === "string" ? publicId.trim() : "";
   const expectedPrefix = `https://res.cloudinary.com/${EnvConfig.CLOUDINARY_CLOUD_NAME}/image/upload/`;
@@ -46,9 +70,21 @@ export const addInstagramFeedbackImageService = async ({ imageUrl, publicId, alt
   const alt = typeof altText === "string" ? altText.trim() : "";
   if (alt.length > MAX_ALT_TEXT_LENGTH) throw badRequest(`Image description can't be longer than ${MAX_ALT_TEXT_LENGTH} characters`);
 
-  const last = await prisma.instagramFeedbackImage.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } });
+  await assertCourseExists(courseId);
+
+  const last = await prisma.instagramFeedbackImage.findFirst({
+    where: scopeWhere(courseId),
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
   const image = await prisma.instagramFeedbackImage.create({
-    data: { imageUrl: url, publicId: id, altText: alt || null, sortOrder: (last?.sortOrder ?? 0) + 1 },
+    data: {
+      imageUrl: url,
+      publicId: id,
+      altText: alt || null,
+      courseId: courseId || null,
+      sortOrder: (last?.sortOrder ?? 0) + 1,
+    },
     select: imageSelect,
   });
 
@@ -56,8 +92,8 @@ export const addInstagramFeedbackImageService = async ({ imageUrl, publicId, alt
   return image;
 };
 
-/** Saves a new order: `orderedIds` lists every image, first to last. */
-export const reorderInstagramFeedbackImagesService = async ({ orderedIds }) => {
+/** Saves a new order: `orderedIds` lists every image of the scope (global or one course), first to last. */
+export const reorderInstagramFeedbackImagesService = async ({ orderedIds, courseId }) => {
   if (!Array.isArray(orderedIds) || orderedIds.length === 0 || orderedIds.some((id) => typeof id !== "string" || !id)) {
     throw badRequest("orderedIds must list the image IDs");
   }
@@ -65,7 +101,8 @@ export const reorderInstagramFeedbackImagesService = async ({ orderedIds }) => {
 
   const images = await prisma.$transaction(async (transaction) => {
     const existing = await transaction.instagramFeedbackImage.findMany({
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      where: scopeWhere(courseId),
+      orderBy: imageOrder,
       select: { id: true },
     });
     const existingIds = new Set(existing.map(({ id }) => id));
@@ -79,10 +116,7 @@ export const reorderInstagramFeedbackImagesService = async ({ orderedIds }) => {
         transaction.instagramFeedbackImage.update({ where: { id }, data: { sortOrder: index + 1 } }),
       ),
     );
-    return transaction.instagramFeedbackImage.findMany({
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: imageSelect,
-    });
+    return transaction.instagramFeedbackImage.findMany({ where: scopeWhere(courseId), orderBy: imageOrder, select: imageSelect });
   });
 
   revalidateLandingTags([LandingTags.INSTAGRAM_FEEDBACK]);
@@ -108,3 +142,13 @@ export const deleteInstagramFeedbackImageService = async (id) => {
 
   return { id };
 };
+
+/** Removes a deleted course's own screenshots from Cloudinary (the rows go with the course). */
+export const destroyCourseFeedbackImageFiles = (publicIds) =>
+  Promise.all(
+    publicIds.map((publicId) =>
+      cloudinary.uploader
+        .destroy(publicId, { resource_type: "image", invalidate: true })
+        .catch((error) => console.error(`Cloudinary delete failed for ${publicId}:`, error)),
+    ),
+  );

@@ -202,7 +202,8 @@ model PdfCourseResource {
   @@map("pdf_course_resource")
 }
 
-// Student feedback screenshots (Cloudinary) shown on the home page and course landing pages.
+// Student feedback screenshots (Cloudinary). Without a course they are global (home page, and course pages
+// that have none of their own); with a course they show only on that course's landing page.
 model InstagramFeedbackImage {
   id String @id @default(uuid())
 
@@ -210,12 +211,16 @@ model InstagramFeedbackImage {
   publicId String
   altText  String?
 
+  courseId String?
+  course   YogaCourse? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
   sortOrder Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([sortOrder])
+  @@index([courseId, sortOrder])
   @@map("instagram_feedback_images")
 }
 
@@ -268,10 +273,11 @@ model YogaCourse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  courseVideos CourseVideo[]
-  orders       Order[]
-  enrollments  Enrollment[]
-  reviews      CourseReview[]
+  courseVideos   CourseVideo[]
+  orders         Order[]
+  enrollments    Enrollment[]
+  reviews        CourseReview[]
+  feedbackImages InstagramFeedbackImage[]
 
   landingContent CourseLandingContent?
   videoGroups    CourseVideoGroup[]
