@@ -19,8 +19,6 @@ import { ERROR_MESSAGES } from "#src/utils/error.messages.js";
 
 const videoUploadRoutes = Router();
 
-const MAX_VIDEO_FILE_SIZE = 50 * 1024 * 1024 * 1024; // 50 GB
-
 // Optional release date (YYYY-MM-DD, IST). Empty or null clears it. Range checks run in the service.
 const releaseDateValidator = body("releaseDate")
   .optional({ values: "falsy" })
@@ -85,10 +83,7 @@ videoUploadRoutes.post(
   body("fileSize")
     .notEmpty()
     .withMessage(ERROR_MESSAGES.VIDEO_FILE_SIZE_REQUIRED)
-    .isInt({
-      min: 1,
-      max: MAX_VIDEO_FILE_SIZE,
-    })
+    .isInt({ min: 1 })
     .withMessage(ERROR_MESSAGES.VIDEO_FILE_SIZE_INVALID)
     .toInt(),
 
