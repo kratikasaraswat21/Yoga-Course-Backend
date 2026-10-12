@@ -903,7 +903,8 @@ export const createCourseTrailerUploadService = async ({ courseId, fileName, fil
     throw new Error(ERROR_MESSAGES.CLOUDFLARE_STREAM_CONFIGURATION_MISSING);
   }
 
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  // Cloudflare's maximum (6 hours), so large uploads on slow connections don't expire mid-upload.
+  const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
   const uploadMetadata = encodeMetadata({
     name: fileName,
     maxDurationSeconds: String(Math.ceil(maxDurationSeconds)),
